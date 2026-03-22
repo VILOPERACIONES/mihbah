@@ -5,7 +5,8 @@ import { MontoDisplay, formatMonto, formatMontoAbreviado } from "@/components/sh
 import { TipoChip } from "@/components/shared/TipoChip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
