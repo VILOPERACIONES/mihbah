@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { ModalExcelUpload } from "@/components/movimientos/ModalExcelUpload";
 
 const TIPOS = ["INGRESO", "SALIDA", "INTERNO", "PRESTAMO"];
 const PAGE_SIZE = 50;
