@@ -47,6 +47,17 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        jade: {
+          DEFAULT: "hsl(var(--jade))",
+          mid: "hsl(var(--jade-mid))",
+          dark: "hsl(var(--jade-dark))",
+          dim: "hsl(var(--jade-dim) / 0.12)",
+        },
+        turquesa: "hsl(var(--turquesa))",
+        indigo: "hsl(var(--indigo))",
+        positive: "hsl(var(--positive))",
+        negative: "hsl(var(--negative))",
+        warning: "hsl(var(--warning))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -65,20 +76,12 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
       },
       animation: {
