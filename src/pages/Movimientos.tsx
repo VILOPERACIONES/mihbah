@@ -36,7 +36,6 @@ export default function MovimientosPage() {
   const [loading, setLoading] = useState(true);
   const [tipoFilter, setTipoFilter] = useState("all");
   const [excelOpen, setExcelOpen] = useState(false);
-  const [tipoFilter, setTipoFilter] = useState("all");
 
   const load = useCallback(async () => {
     setLoading(true);
