@@ -379,7 +379,7 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
 
         {step === "done" && importResult && (
           <div className="py-6 text-center space-y-4">
-            <CheckCircle2 className="h-12 w-12 text-emerald-400 mx-auto" />
+            <CheckCircle2 className="h-12 w-12 text-primary mx-auto" />
             <div>
               <p className="text-sm font-medium">Importación completada</p>
               <p className="text-xs text-muted-foreground mt-1">
