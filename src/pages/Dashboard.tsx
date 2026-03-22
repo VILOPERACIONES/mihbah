@@ -158,7 +158,7 @@ export default function DashboardPage() {
       setLoading(false);
     }
     load();
-  }, [empresaActiva]);
+  }, [empresaActiva, selectedAnio, selectedMes, periodsLoaded]);
 
   const kpiCards = useMemo(() => {
     if (!kpis) return [];
