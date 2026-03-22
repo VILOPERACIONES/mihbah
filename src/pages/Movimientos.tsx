@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { ModalExcelUpload } from "@/components/movimientos/ModalExcelUpload";
 
 const TIPOS = ["INGRESO", "SALIDA", "INTERNO", "PRESTAMO"];
 const PAGE_SIZE = 50;
@@ -34,6 +35,7 @@ export default function MovimientosPage() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [tipoFilter, setTipoFilter] = useState("all");
+  const [excelOpen, setExcelOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,7 +68,7 @@ export default function MovimientosPage() {
           <h1 className="text-xl font-semibold">Movimientos</h1>
           <p className="text-sm text-muted-foreground">{total.toLocaleString()} registros</p>
         </div>
-        <Button size="sm" className="gap-2">
+        <Button size="sm" className="gap-2" onClick={() => setExcelOpen(true)}>
           <Upload className="h-4 w-4" /> Cargar Excel
         </Button>
       </div>
@@ -151,6 +153,7 @@ export default function MovimientosPage() {
           </div>
         </div>
       </Card>
+      <ModalExcelUpload open={excelOpen} onClose={() => setExcelOpen(false)} onDone={load} />
     </div>
   );
 }
