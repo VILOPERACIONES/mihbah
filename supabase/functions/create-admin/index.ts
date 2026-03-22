@@ -1,17 +1,17 @@
-import { Hono } from "https://deno.land/x/hono@v4.4.2/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const app = new Hono();
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
-app.options('/*', (c) => new Response(null, { headers: corsHeaders }));
-
-app.post('/', async (c) => {
   try {
-    const { email, password, nombre, rol, empresas } = await c.req.json();
+    const { email, password, nombre, rol, empresas } = await req.json();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -34,12 +34,14 @@ app.post('/', async (c) => {
 
     const userData = await createRes.json();
     if (!createRes.ok) {
-      return c.json({ error: userData.msg || 'Failed to create user' }, 400);
+      return new Response(JSON.stringify({ error: userData.msg || 'Failed to create user' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const userId = userData.id;
 
-    // Update profile
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.4");
     const supabase = createClient(supabaseUrl, serviceKey);
 
@@ -48,15 +50,17 @@ app.post('/', async (c) => {
       empresas: empresas || ['*'],
     }).eq('user_id', userId);
 
-    // Set role
     await supabase.from('user_roles').update({
       role: rol || 'VIEWER',
     }).eq('user_id', userId);
 
-    return c.json({ success: true, userId }, 200, corsHeaders);
+    return new Response(JSON.stringify({ success: true, userId }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    return c.json({ error: String(error) }, 500, corsHeaders);
+    return new Response(JSON.stringify({ error: String(error) }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
-
-Deno.serve(app.fetch);
