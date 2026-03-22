@@ -111,12 +111,21 @@ function parseExcel(buffer: ArrayBuffer): { filas: FilaParsed[]; errores: ParseE
 
     try {
       const empresa = String(row["EMPRESA"] ?? "").trim().toUpperCase();
-      const concepto = String(row["CONCEPTO"] ?? "").trim();
+      const conceptoRaw = String(row["CONCEPTO"] ?? "").trim();
       const tipoRaw = String(row["TIPO"] ?? "").trim().toUpperCase();
       const montoRaw = parsearMonto(row["MONTO"]);
 
       if (!empresa) throw new Error("EMPRESA vacía");
-      if (!concepto) throw new Error("CONCEPTO vacío");
+
+      // Fallback para concepto vacío
+      const categoria = row["CATEGORÍA"] ? String(row["CATEGORÍA"]).trim().toUpperCase() : "";
+      const grupo = row["GRUPO"] ? String(row["GRUPO"]).trim() : "";
+      const nombre = row["NOMBRE"] ? String(row["NOMBRE"]).trim() : "";
+      const concepto = conceptoRaw
+        || (categoria && grupo ? `${categoria} - ${grupo}` : "")
+        || categoria
+        || nombre
+        || "Sin concepto";
       if (Number.isNaN(montoRaw)) throw new Error(`MONTO inválido: \"${String(row["MONTO"] ?? "")}\"`);
       if (!TIPOS_VALIDOS.includes(tipoRaw as FilaParsed["tipo"])) {
         throw new Error(`TIPO inválido: \"${tipoRaw}\"`);
