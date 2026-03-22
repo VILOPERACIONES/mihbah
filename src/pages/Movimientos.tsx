@@ -153,6 +153,7 @@ export default function MovimientosPage() {
           </div>
         </div>
       </Card>
+      <ModalExcelUpload open={excelOpen} onClose={() => setExcelOpen(false)} onDone={load} />
     </div>
   );
 }
