@@ -7,15 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown } from "lucide-react";
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 
 interface KPIs {
@@ -49,6 +41,8 @@ interface Movimiento {
   monto: number;
 }
 
+const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
 export default function DashboardPage() {
   const { empresaActiva } = useAppStore();
   const [kpis, setKpis] = useState<KPIs | null>(null);
@@ -56,114 +50,95 @@ export default function DashboardPage() {
   const [topCats, setTopCats] = useState<CatGasto[]>([]);
   const [recientes, setRecientes] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const now = new Date();
-  const anioAct = now.getFullYear();
-  const mesAct = now.getMonth() + 1;
+  const [periodoLabel, setPeriodoLabel] = useState("");
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       const empresaFilter = empresaActiva !== "TODAS" ? empresaActiva : null;
 
-      // Build queries
-      let kpiQuery = supabase
-        .from("movimientos")
-        .select("tipo, monto")
-        .eq("activo", true)
-        .eq("anio", anioAct)
-        .eq("mes", mesAct);
+      // 1. Get latest month with data
+      const { data: latestMonth } = await supabase.rpc("get_latest_month");
+      const anio = latestMonth?.[0]?.anio;
+      const mes = latestMonth?.[0]?.mes;
 
-      if (empresaFilter) kpiQuery = kpiQuery.eq("empresa", empresaFilter);
+      if (!anio || !mes) {
+        setKpis(null);
+        setFlujo([]);
+        setTopCats([]);
+        setRecientes([]);
+        setLoading(false);
+        setPeriodoLabel("Sin datos");
+        return;
+      }
 
-      const { data: movs } = await kpiQuery;
+      setPeriodoLabel(`${MESES[mes]} ${anio}`);
 
-      if (movs) {
-        let ingresos = 0, salidas = 0, cIngresos = 0, cSalidas = 0;
-        movs.forEach((m: { tipo: string; monto: number }) => {
-          if (m.tipo === "INGRESO") { ingresos += Number(m.monto); cIngresos++; }
-          if (m.tipo === "SALIDA") { salidas += Math.abs(Number(m.monto)); cSalidas++; }
-        });
+      // 2. Get KPIs for latest month + previous month (parallel)
+      const mesAnterior = mes === 1 ? 12 : mes - 1;
+      const anioAnterior = mes === 1 ? anio - 1 : anio;
+
+      const [kpiRes, flujoRes, catRes, recRes] = await Promise.all([
+        supabase.rpc("get_kpis_mes", { _anio: anio, _mes: mes, _empresa: empresaFilter }),
+        supabase.rpc("get_flujo_mensual", { _anio_desde: anio - 2, _empresa: empresaFilter }),
+        supabase.rpc("get_top_categorias", { _anio: anio, _mes: mes, _limite: 8, _empresa: empresaFilter }),
+        (() => {
+          let q = supabase
+            .from("movimientos")
+            .select("id, fecha, empresa, tipo, categoria, concepto, monto")
+            .eq("activo", true)
+            .order("fecha", { ascending: false })
+            .limit(15);
+          if (empresaFilter) q = q.eq("empresa", empresaFilter);
+          return q;
+        })(),
+      ]);
+
+      // Process KPIs
+      if (kpiRes.data) {
+        const d = kpiRes.data as any;
+        const ingresos = Number(d.ingresos) || 0;
+        const salidas = Number(d.salidas) || 0;
         const resultado = ingresos - salidas;
         setKpis({
           ingresos, salidas, resultado,
           margen: ingresos > 0 ? Math.round((resultado / ingresos) * 10000) / 100 : 0,
-          conteoIngresos: cIngresos,
-          conteoSalidas: cSalidas,
+          conteoIngresos: Number(d.conteo_ingresos) || 0,
+          conteoSalidas: Number(d.conteo_salidas) || 0,
         });
       }
 
-      // Flujo últimos 12 meses
-      let flujoQuery = supabase
-        .from("movimientos")
-        .select("anio, mes, tipo, monto")
-        .eq("activo", true)
-        .gte("anio", anioAct - 1);
-      if (empresaFilter) flujoQuery = flujoQuery.eq("empresa", empresaFilter);
-      const { data: flujoData } = await flujoQuery;
-
-      if (flujoData) {
-        const mapa = new Map<string, { ingresos: number; salidas: number }>();
-        flujoData.forEach((m: { anio: number; mes: number; tipo: string; monto: number }) => {
-          const key = `${m.anio}-${String(m.mes).padStart(2, "0")}`;
-          if (!mapa.has(key)) mapa.set(key, { ingresos: 0, salidas: 0 });
-          const entry = mapa.get(key)!;
-          if (m.tipo === "INGRESO") entry.ingresos += Number(m.monto);
-          if (m.tipo === "SALIDA") entry.salidas += Math.abs(Number(m.monto));
-        });
-
+      // Process flujo
+      if (flujoRes.data && Array.isArray(flujoRes.data)) {
         let balance = 0;
-        const flujoArr = [...mapa.entries()]
-          .sort(([a], [b]) => a.localeCompare(b))
+        const flujoArr = (flujoRes.data as any[])
           .slice(-12)
-          .map(([periodo, { ingresos, salidas }]) => {
-            balance += ingresos - salidas;
-            return { periodo, ingresos, salidas, balance };
+          .map((row) => {
+            const ing = Number(row.ingresos) || 0;
+            const sal = Number(row.salidas) || 0;
+            balance += ing - sal;
+            return { periodo: row.periodo, ingresos: ing, salidas: sal, balance };
           });
         setFlujo(flujoArr);
       }
 
-      // Top categorías egreso
-      let catQuery = supabase
-        .from("movimientos")
-        .select("categoria, monto")
-        .eq("activo", true)
-        .eq("anio", anioAct)
-        .eq("mes", mesAct)
-        .eq("tipo", "SALIDA")
-        .not("categoria", "is", null);
-      if (empresaFilter) catQuery = catQuery.eq("empresa", empresaFilter);
-      const { data: catData } = await catQuery;
-
-      if (catData) {
-        const catMap = new Map<string, number>();
-        catData.forEach((m: { categoria: string | null; monto: number }) => {
-          const cat = m.categoria ?? "Sin categoría";
-          catMap.set(cat, (catMap.get(cat) ?? 0) + Math.abs(Number(m.monto)));
-        });
+      // Process categories
+      if (catRes.data && Array.isArray(catRes.data)) {
         setTopCats(
-          [...catMap.entries()]
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 8)
-            .map(([categoria, total]) => ({ categoria, total }))
+          (catRes.data as any[]).map((r) => ({
+            categoria: r.categoria,
+            total: Number(r.total) || 0,
+          }))
         );
       }
 
-      // Últimos 15 movimientos
-      let recQuery = supabase
-        .from("movimientos")
-        .select("id, fecha, empresa, tipo, categoria, concepto, monto")
-        .eq("activo", true)
-        .order("fecha", { ascending: false })
-        .limit(15);
-      if (empresaFilter) recQuery = recQuery.eq("empresa", empresaFilter);
-      const { data: recData } = await recQuery;
-      if (recData) setRecientes(recData as Movimiento[]);
+      // Recent movements
+      if (recRes.data) setRecientes(recRes.data as Movimiento[]);
 
       setLoading(false);
     }
     load();
-  }, [empresaActiva, anioAct, mesAct]);
+  }, [empresaActiva]);
 
   const kpiCards = useMemo(() => {
     if (!kpis) return [];
@@ -179,9 +154,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
-          ))}
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Skeleton className="h-72 rounded-xl" />
@@ -197,7 +170,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            {empresaActiva === "TODAS" ? "Vista consolidada" : empresaActiva} · {now.toLocaleDateString("es-MX", { month: "long", year: "numeric" })}
+            {empresaActiva === "TODAS" ? "Vista consolidada" : empresaActiva} · {periodoLabel}
           </p>
         </div>
       </div>
@@ -214,7 +187,7 @@ export default function DashboardPage() {
               <kpi.icon className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
             </div>
-            {kpi.isPercent ? (
+            {"isPercent" in kpi && kpi.isPercent ? (
               <span className={`font-money text-2xl font-semibold ${kpi.value >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                 {kpi.value >= 0 ? "+" : ""}{kpi.value}%
               </span>
@@ -228,7 +201,6 @@ export default function DashboardPage() {
 
       {/* Charts */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Flujo Chart */}
         <Card className="p-4 border-border rounded-xl" style={{ background: "hsl(var(--bg-card))" }}>
           <h3 className="text-sm font-medium text-foreground mb-4">Flujo Mensual</h3>
           <ResponsiveContainer width="100%" height={240}>
@@ -247,7 +219,6 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </Card>
 
-        {/* Top Categorías */}
         <Card className="p-4 border-border rounded-xl" style={{ background: "hsl(var(--bg-card))" }}>
           <h3 className="text-sm font-medium text-foreground mb-4">Top Egresos por Categoría</h3>
           <ResponsiveContainer width="100%" height={240}>

@@ -208,6 +208,37 @@ export type Database = {
         Args: { _empresa: string; _user_id: string }
         Returns: boolean
       }
+      get_flujo_mensual: {
+        Args: { _anio_desde: number; _empresa?: string }
+        Returns: {
+          ingresos: number
+          periodo: string
+          salidas: number
+        }[]
+      }
+      get_kpis_mes: {
+        Args: { _anio: number; _empresa?: string; _mes: number }
+        Returns: Json
+      }
+      get_latest_month: {
+        Args: never
+        Returns: {
+          anio: number
+          mes: number
+        }[]
+      }
+      get_top_categorias: {
+        Args: {
+          _anio: number
+          _empresa?: string
+          _limite?: number
+          _mes: number
+        }
+        Returns: {
+          categoria: string
+          total: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
