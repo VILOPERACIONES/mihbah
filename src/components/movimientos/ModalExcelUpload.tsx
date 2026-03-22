@@ -5,11 +5,11 @@ import { Progress } from "@/components/ui/progress";
 import { TipoChip } from "@/components/shared/TipoChip";
 import { MontoDisplay } from "@/components/shared/MontoDisplay";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, X } from "lucide-react";
+import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const TIPOS_VALIDOS = ["INGRESO", "SALIDA", "INTERNO", "PRESTAMO"] as const;
-const BATCH_SIZE = 500;
+const BATCH_SIZE = 250;
 
 interface FilaParsed {
   empresa: string;
@@ -34,25 +34,72 @@ interface ParseError {
 
 type Step = "select" | "parsing" | "preview" | "importing" | "done";
 
+function normalizeDate(date: Date) {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0));
+}
+
 function parsearFecha(valor: unknown): Date | null {
-  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
+  if (valor instanceof Date && !isNaN(valor.getTime())) return normalizeDate(valor);
+
   if (typeof valor === "number") {
-    return new Date(Math.round((valor - 25569) * 86400 * 1000));
+    const parsed = XLSX.SSF.parse_date_code(valor);
+    if (parsed) {
+      return new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d, 12, 0, 0));
+    }
   }
+
   if (typeof valor === "string" && valor.trim()) {
-    const d = new Date(valor);
-    if (!isNaN(d.getTime())) return d;
+    const text = valor.trim();
+
+    const mxMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+    if (mxMatch) {
+      const day = Number(mxMatch[1]);
+      const month = Number(mxMatch[2]);
+      const rawYear = Number(mxMatch[3]);
+      const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+      return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    }
+
+    const iso = new Date(text);
+    if (!isNaN(iso.getTime())) return normalizeDate(iso);
   }
+
   return null;
+}
+
+function parsearMonto(valor: unknown): number {
+  if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+
+  if (typeof valor === "string") {
+    const text = valor.trim();
+    if (!text) return NaN;
+
+    const negativeByParens = text.startsWith("(") && text.endsWith(")");
+    const cleaned = text
+      .replace(/[$,\s]/g, "")
+      .replace(/[()]/g, "")
+      .replace(/[^0-9.-]/g, "");
+
+    const parsed = Number(cleaned);
+    if (!Number.isNaN(parsed)) return negativeByParens ? -parsed : parsed;
+  }
+
+  return NaN;
 }
 
 function parseExcel(buffer: ArrayBuffer): { filas: FilaParsed[]; errores: ParseError[]; totalRaw: number } {
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
   const sheetName = workbook.SheetNames.find((n) => n.trim().toUpperCase() === "BASE") || workbook.SheetNames[0];
-  const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[sheetName], {
+  const sheet = workbook.Sheets[sheetName];
+
+  if (!sheet) {
+    throw new Error("No se encontró una hoja válida para importar.");
+  }
+
+  const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
     range: 2,
     defval: null,
-    raw: false,
+    raw: true,
   });
 
   const filas: FilaParsed[] = [];
@@ -60,22 +107,27 @@ function parseExcel(buffer: ArrayBuffer): { filas: FilaParsed[]; errores: ParseE
 
   rawRows.forEach((row, idx) => {
     const numFila = idx + 4;
+
     try {
       const empresa = String(row["EMPRESA"] ?? "").trim().toUpperCase();
       const concepto = String(row["CONCEPTO"] ?? "").trim();
       const tipoRaw = String(row["TIPO"] ?? "").trim().toUpperCase();
-      const montoRaw = Number(row["MONTO"]);
+      const montoRaw = parsearMonto(row["MONTO"]);
 
       if (!empresa) throw new Error("EMPRESA vacía");
       if (!concepto) throw new Error("CONCEPTO vacío");
-      if (isNaN(montoRaw)) throw new Error(`MONTO inválido: "${row["MONTO"]}"`);
-      if (!TIPOS_VALIDOS.includes(tipoRaw as any)) throw new Error(`TIPO inválido: "${tipoRaw}"`);
+      if (Number.isNaN(montoRaw)) throw new Error(`MONTO inválido: \"${String(row["MONTO"] ?? "")}\"`);
+      if (!TIPOS_VALIDOS.includes(tipoRaw as FilaParsed["tipo"])) {
+        throw new Error(`TIPO inválido: \"${tipoRaw}\"`);
+      }
 
       const fechaObj = parsearFecha(row["FECHA"]);
-      if (!fechaObj) throw new Error(`Fecha inválida: "${row["FECHA"]}"`);
+      if (!fechaObj) throw new Error(`Fecha inválida: \"${String(row["FECHA"] ?? "")}\"`);
 
-      const anio = Number(row["AÑO"]) || fechaObj.getFullYear();
-      const mes = Number(row["MES"]) || fechaObj.getMonth() + 1;
+      const anio = Number(row["AÑO"]) || fechaObj.getUTCFullYear();
+      const mes = Number(row["MES"]) || fechaObj.getUTCMonth() + 1;
+
+      if (mes < 1 || mes > 12) throw new Error(`MES inválido: ${mes}`);
 
       filas.push({
         empresa,
@@ -92,8 +144,11 @@ function parseExcel(buffer: ArrayBuffer): { filas: FilaParsed[]; errores: ParseE
         proyecto: row["PROYECTO"] ? String(row["PROYECTO"]).trim().toUpperCase() : null,
         comentario: row["COMENTARIO"] ? String(row["COMENTARIO"]).trim() : null,
       });
-    } catch (e: any) {
-      errores.push({ fila: numFila, error: e.message });
+    } catch (e) {
+      errores.push({
+        fila: numFila,
+        error: e instanceof Error ? e.message : "Error desconocido al leer la fila",
+      });
     }
   });
 
@@ -103,7 +158,7 @@ function parseExcel(buffer: ArrayBuffer): { filas: FilaParsed[]; errores: ParseE
 interface Props {
   open: boolean;
   onClose: () => void;
-  onDone: () => void;
+  onDone: () => void | Promise<void>;
 }
 
 export function ModalExcelUpload({ open, onClose, onDone }: Props) {
@@ -135,12 +190,20 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
   const processFile = useCallback(async (file: File) => {
     setFileName(file.name);
     setStep("parsing");
-    const buffer = await file.arrayBuffer();
-    const result = parseExcel(buffer);
-    setFilas(result.filas);
-    setErrores(result.errores);
-    setTotalRaw(result.totalRaw);
-    setStep("preview");
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const result = parseExcel(buffer);
+      setFilas(result.filas);
+      setErrores(result.errores);
+      setTotalRaw(result.totalRaw);
+      setStep("preview");
+    } catch {
+      setFilas([]);
+      setErrores([{ fila: 0, error: "No se pudo leer este archivo. Asegúrate de que sea un Excel válido con una hoja BASE." }]);
+      setTotalRaw(0);
+      setStep("preview");
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -161,21 +224,8 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
     setStep("importing");
     setProgress(0);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Create upload record
-    const { data: upload } = await supabase.from("excel_uploads").insert({
-      nombre_archivo: fileName,
-      total_filas: totalRaw,
-      filas_importadas: 0,
-      filas_error: errores.length,
-      errores_detalle: errores.length > 0 ? errores as any : null,
-      subido_por_id: user.id,
-    }).select("id").single();
-
-    const uploadId = upload?.id;
     let imported = 0;
+    const batchErrors: ParseError[] = [];
 
     for (let i = 0; i < filas.length; i += BATCH_SIZE) {
       const batch = filas.slice(i, i + BATCH_SIZE).map((f) => ({
@@ -183,7 +233,7 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
         anio: f.anio,
         mes: f.mes,
         fecha: f.fecha,
-        tipo: f.tipo as "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO",
+        tipo: f.tipo,
         categoria: f.categoria,
         grupo: f.grupo,
         nombre: f.nombre,
@@ -193,20 +243,30 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
         proyecto: f.proyecto,
         comentario: f.comentario,
         fuente: "EXCEL",
-        upload_id: uploadId ?? undefined,
       }));
 
       const { error } = await supabase.from("movimientos").insert(batch);
-      if (!error) imported += batch.length;
-      setProgress(Math.round(((i + batch.length) / filas.length) * 100));
+
+      if (error) {
+        batchErrors.push({ fila: i + 4, error: error.message });
+      } else {
+        imported += batch.length;
+      }
+
+      setProgress(Math.round((Math.min(i + batch.length, filas.length) / Math.max(filas.length, 1)) * 100));
     }
 
-    // Update upload record
-    if (uploadId) {
-      await supabase.from("excel_uploads").update({ filas_importadas: imported }).eq("id", uploadId);
-    }
+    await supabase.from("excel_uploads").insert({
+      nombre_archivo: fileName,
+      total_filas: totalRaw,
+      filas_importadas: imported,
+      filas_error: errores.length + batchErrors.length,
+      errores_detalle: errores.length + batchErrors.length > 0 ? [...errores, ...batchErrors] : null,
+      subido_por_id: (await supabase.auth.getUser()).data.user?.id,
+    });
 
     setImportResult({ ok: imported, fail: filas.length - imported });
+    setErrores((prev) => [...prev, ...batchErrors]);
     setStep("done");
   };
 
