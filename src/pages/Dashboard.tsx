@@ -52,26 +52,45 @@ export default function DashboardPage() {
   const [recientes, setRecientes] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodoLabel, setPeriodoLabel] = useState("");
+  const [availablePeriods, setAvailablePeriods] = useState<{ anio: number; mes: number }[]>([]);
+  const [selectedAnio, setSelectedAnio] = useState<number | null>(null);
+  const [selectedMes, setSelectedMes] = useState<number | null>(null);
+  const [periodsLoaded, setPeriodsLoaded] = useState(false);
+
+  // Load available periods on mount
+  useEffect(() => {
+    async function loadPeriods() {
+      const [periodsRes, latestRes] = await Promise.all([
+        supabase.rpc("get_available_periods"),
+        supabase.rpc("get_latest_month"),
+      ]);
+      if (periodsRes.data) setAvailablePeriods(periodsRes.data as any[]);
+      if (latestRes.data?.[0]) {
+        setSelectedAnio(latestRes.data[0].anio);
+        setSelectedMes(latestRes.data[0].mes);
+      }
+      setPeriodsLoaded(true);
+    }
+    loadPeriods();
+  }, []);
+
+  const availableYears = useMemo(() => 
+    [...new Set(availablePeriods.map(p => p.anio))].sort((a, b) => b - a),
+    [availablePeriods]
+  );
+
+  const availableMonths = useMemo(() => 
+    availablePeriods.filter(p => p.anio === selectedAnio).map(p => p.mes).sort((a, b) => a - b),
+    [availablePeriods, selectedAnio]
+  );
 
   useEffect(() => {
+    if (!periodsLoaded || !selectedAnio || !selectedMes) return;
     async function load() {
       setLoading(true);
       const empresaFilter = empresaActiva !== "TODAS" ? empresaActiva : null;
-
-      // 1. Get latest month with data
-      const { data: latestMonth } = await supabase.rpc("get_latest_month");
-      const anio = latestMonth?.[0]?.anio;
-      const mes = latestMonth?.[0]?.mes;
-
-      if (!anio || !mes) {
-        setKpis(null);
-        setFlujo([]);
-        setTopCats([]);
-        setRecientes([]);
-        setLoading(false);
-        setPeriodoLabel("Sin datos");
-        return;
-      }
+      const anio = selectedAnio!;
+      const mes = selectedMes!;
 
       setPeriodoLabel(`${MESES[mes]} ${anio}`);
 
