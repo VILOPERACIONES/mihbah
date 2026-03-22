@@ -227,6 +227,17 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
     let imported = 0;
     const batchErrors: ParseError[] = [];
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setErrores([{ fila: 0, error: "Tu sesión expiró. Inicia sesión de nuevo para importar." }]);
+      setImportResult({ ok: 0, fail: filas.length });
+      setStep("done");
+      return;
+    }
+
     for (let i = 0; i < filas.length; i += BATCH_SIZE) {
       const batch = filas.slice(i, i + BATCH_SIZE).map((f) => ({
         empresa: f.empresa,
@@ -256,14 +267,16 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
       setProgress(Math.round((Math.min(i + batch.length, filas.length) / Math.max(filas.length, 1)) * 100));
     }
 
-    await supabase.from("excel_uploads").insert({
-      nombre_archivo: fileName,
-      total_filas: totalRaw,
-      filas_importadas: imported,
-      filas_error: errores.length + batchErrors.length,
-      errores_detalle: errores.length + batchErrors.length > 0 ? [...errores, ...batchErrors] : null,
-      subido_por_id: (await supabase.auth.getUser()).data.user?.id,
-    });
+    await supabase.from("excel_uploads").insert([
+      {
+        nombre_archivo: fileName,
+        total_filas: totalRaw,
+        filas_importadas: imported,
+        filas_error: errores.length + batchErrors.length,
+        errores_detalle: errores.length + batchErrors.length > 0 ? [...errores, ...batchErrors] : null,
+        subido_por_id: user.id,
+      },
+    ]);
 
     setImportResult({ ok: imported, fail: filas.length - imported });
     setErrores((prev) => [...prev, ...batchErrors]);
