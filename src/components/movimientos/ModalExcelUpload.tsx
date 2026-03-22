@@ -349,7 +349,7 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
 
             {errores.length > 0 && (
               <details className="text-xs">
-                <summary className="cursor-pointer text-amber-400">Ver errores ({errores.length})</summary>
+                <summary className="cursor-pointer text-muted-foreground">Ver errores ({errores.length})</summary>
                 <div className="mt-2 max-h-28 overflow-y-auto space-y-1 text-muted-foreground">
                   {errores.slice(0, 20).map((e, i) => (
                     <p key={i}>Fila {e.fila}: {e.error}</p>
