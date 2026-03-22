@@ -193,6 +193,29 @@ export default function DashboardPage() {
             {empresaActiva === "TODAS" ? "Vista consolidada" : empresaActiva} · {periodoLabel}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select value={String(selectedMes)} onValueChange={(v) => setSelectedMes(Number(v))}>
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableMonths.map((m) => (
+                <SelectItem key={m} value={String(m)}>{MESES[m]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(selectedAnio)} onValueChange={(v) => setSelectedAnio(Number(v))}>
+            <SelectTrigger className="w-[80px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* KPI Cards */}
