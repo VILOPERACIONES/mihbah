@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { TipoChip } from "@/components/shared/TipoChip";
 import { MontoDisplay } from "@/components/shared/MontoDisplay";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import * as XLSX from "xlsx";
 
