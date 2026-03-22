@@ -208,6 +208,13 @@ export type Database = {
         Args: { _empresa: string; _user_id: string }
         Returns: boolean
       }
+      get_available_periods: {
+        Args: never
+        Returns: {
+          anio: number
+          mes: number
+        }[]
+      }
       get_flujo_mensual: {
         Args: { _anio_desde: number; _empresa?: string }
         Returns: {
