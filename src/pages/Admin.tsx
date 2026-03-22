@@ -413,9 +413,9 @@ function LLMTab() {
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold",
-                  prov.id === "anthropic" && "bg-amber-500/20 text-amber-400",
-                  prov.id === "openai" && "bg-green-500/20 text-green-400",
-                  prov.id === "google" && "bg-blue-500/20 text-blue-400",
+                  prov.id === "anthropic" && "bg-warning/20 text-warning",
+                  prov.id === "openai" && "bg-positive/20 text-positive",
+                  prov.id === "google" && "bg-indigo/20 text-indigo",
                   prov.id === "custom" && "bg-muted text-muted-foreground",
                 )}>
                   {prov.name.charAt(0)}
