@@ -5,7 +5,8 @@ import { MontoDisplay, formatMonto, formatMontoAbreviado } from "@/components/sh
 import { TipoChip } from "@/components/shared/TipoChip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -51,26 +52,45 @@ export default function DashboardPage() {
   const [recientes, setRecientes] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodoLabel, setPeriodoLabel] = useState("");
+  const [availablePeriods, setAvailablePeriods] = useState<{ anio: number; mes: number }[]>([]);
+  const [selectedAnio, setSelectedAnio] = useState<number | null>(null);
+  const [selectedMes, setSelectedMes] = useState<number | null>(null);
+  const [periodsLoaded, setPeriodsLoaded] = useState(false);
+
+  // Load available periods on mount
+  useEffect(() => {
+    async function loadPeriods() {
+      const [periodsRes, latestRes] = await Promise.all([
+        supabase.rpc("get_available_periods"),
+        supabase.rpc("get_latest_month"),
+      ]);
+      if (periodsRes.data) setAvailablePeriods(periodsRes.data as any[]);
+      if (latestRes.data?.[0]) {
+        setSelectedAnio(latestRes.data[0].anio);
+        setSelectedMes(latestRes.data[0].mes);
+      }
+      setPeriodsLoaded(true);
+    }
+    loadPeriods();
+  }, []);
+
+  const availableYears = useMemo(() => 
+    [...new Set(availablePeriods.map(p => p.anio))].sort((a, b) => b - a),
+    [availablePeriods]
+  );
+
+  const availableMonths = useMemo(() => 
+    availablePeriods.filter(p => p.anio === selectedAnio).map(p => p.mes).sort((a, b) => a - b),
+    [availablePeriods, selectedAnio]
+  );
 
   useEffect(() => {
+    if (!periodsLoaded || !selectedAnio || !selectedMes) return;
     async function load() {
       setLoading(true);
       const empresaFilter = empresaActiva !== "TODAS" ? empresaActiva : null;
-
-      // 1. Get latest month with data
-      const { data: latestMonth } = await supabase.rpc("get_latest_month");
-      const anio = latestMonth?.[0]?.anio;
-      const mes = latestMonth?.[0]?.mes;
-
-      if (!anio || !mes) {
-        setKpis(null);
-        setFlujo([]);
-        setTopCats([]);
-        setRecientes([]);
-        setLoading(false);
-        setPeriodoLabel("Sin datos");
-        return;
-      }
+      const anio = selectedAnio!;
+      const mes = selectedMes!;
 
       setPeriodoLabel(`${MESES[mes]} ${anio}`);
 
@@ -138,7 +158,7 @@ export default function DashboardPage() {
       setLoading(false);
     }
     load();
-  }, [empresaActiva]);
+  }, [empresaActiva, selectedAnio, selectedMes, periodsLoaded]);
 
   const kpiCards = useMemo(() => {
     if (!kpis) return [];
@@ -172,6 +192,29 @@ export default function DashboardPage() {
           <p className="text-sm text-muted-foreground">
             {empresaActiva === "TODAS" ? "Vista consolidada" : empresaActiva} · {periodoLabel}
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select value={String(selectedMes)} onValueChange={(v) => setSelectedMes(Number(v))}>
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableMonths.map((m) => (
+                <SelectItem key={m} value={String(m)}>{MESES[m]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(selectedAnio)} onValueChange={(v) => setSelectedAnio(Number(v))}>
+            <SelectTrigger className="w-[80px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
