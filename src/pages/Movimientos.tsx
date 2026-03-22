@@ -68,7 +68,7 @@ export default function MovimientosPage() {
           <h1 className="text-xl font-semibold">Movimientos</h1>
           <p className="text-sm text-muted-foreground">{total.toLocaleString()} registros</p>
         </div>
-        <Button size="sm" className="gap-2">
+        <Button size="sm" className="gap-2" onClick={() => setExcelOpen(true)}>
           <Upload className="h-4 w-4" /> Cargar Excel
         </Button>
       </div>
