@@ -268,13 +268,18 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
       setProgress(Math.round((Math.min(i + batch.length, filas.length) / Math.max(filas.length, 1)) * 100));
     }
 
+    const uploadErrors: Json | null =
+      errores.length + batchErrors.length > 0
+        ? ([...errores, ...batchErrors].map((item) => ({ fila: item.fila, error: item.error })) as unknown as Json)
+        : null;
+
     await supabase.from("excel_uploads").insert([
       {
         nombre_archivo: fileName,
         total_filas: totalRaw,
         filas_importadas: imported,
         filas_error: errores.length + batchErrors.length,
-        errores_detalle: errores.length + batchErrors.length > 0 ? [...errores, ...batchErrors] : null,
+        errores_detalle: uploadErrors,
         subido_por_id: user.id,
       },
     ]);
