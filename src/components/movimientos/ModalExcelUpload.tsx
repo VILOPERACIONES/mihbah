@@ -313,11 +313,11 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
         {step === "preview" && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+              <CheckCircle2 className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-sm font-medium">{filas.length.toLocaleString()} filas válidas</p>
                 {errores.length > 0 && (
-                  <p className="text-xs text-amber-400 flex items-center gap-1">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" /> {errores.length} errores
                   </p>
                 )}
