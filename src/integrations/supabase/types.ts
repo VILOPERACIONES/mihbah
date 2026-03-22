@@ -14,16 +14,211 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      conversaciones: {
+        Row: {
+          created_at: string
+          empresa: string | null
+          id: string
+          mensajes: Json
+          tokens: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa?: string | null
+          id?: string
+          mensajes?: Json
+          tokens?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa?: string | null
+          id?: string
+          mensajes?: Json
+          tokens?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      excel_uploads: {
+        Row: {
+          created_at: string
+          errores_detalle: Json | null
+          filas_error: number
+          filas_importadas: number
+          id: string
+          nombre_archivo: string
+          subido_por_id: string
+          total_filas: number
+        }
+        Insert: {
+          created_at?: string
+          errores_detalle?: Json | null
+          filas_error?: number
+          filas_importadas?: number
+          id?: string
+          nombre_archivo: string
+          subido_por_id: string
+          total_filas?: number
+        }
+        Update: {
+          created_at?: string
+          errores_detalle?: Json | null
+          filas_error?: number
+          filas_importadas?: number
+          id?: string
+          nombre_archivo?: string
+          subido_por_id?: string
+          total_filas?: number
+        }
+        Relationships: []
+      }
+      movimientos: {
+        Row: {
+          activo: boolean
+          anio: number
+          categoria: string | null
+          comentario: string | null
+          concepto: string
+          created_at: string
+          cuenta: string | null
+          empresa: string
+          fecha: string
+          fuente: string
+          grupo: string | null
+          id: string
+          mes: number
+          monto: number
+          nombre: string | null
+          proyecto: string | null
+          tipo: Database["public"]["Enums"]["tipo_mov"]
+          updated_at: string
+          upload_id: string | null
+        }
+        Insert: {
+          activo?: boolean
+          anio: number
+          categoria?: string | null
+          comentario?: string | null
+          concepto: string
+          created_at?: string
+          cuenta?: string | null
+          empresa: string
+          fecha: string
+          fuente?: string
+          grupo?: string | null
+          id?: string
+          mes: number
+          monto: number
+          nombre?: string | null
+          proyecto?: string | null
+          tipo: Database["public"]["Enums"]["tipo_mov"]
+          updated_at?: string
+          upload_id?: string | null
+        }
+        Update: {
+          activo?: boolean
+          anio?: number
+          categoria?: string | null
+          comentario?: string | null
+          concepto?: string
+          created_at?: string
+          cuenta?: string | null
+          empresa?: string
+          fecha?: string
+          fuente?: string
+          grupo?: string | null
+          id?: string
+          mes?: number
+          monto?: number
+          nombre?: string | null
+          proyecto?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_mov"]
+          updated_at?: string
+          upload_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_movimientos_upload"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "excel_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          activo: boolean
+          created_at: string
+          empresas: string[]
+          id: string
+          nombre: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          empresas?: string[]
+          id?: string
+          nombre?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          empresas?: string[]
+          id?: string
+          nombre?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_access_empresa: {
+        Args: { _empresa: string; _user_id: string }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "SUPER_ADMIN" | "ADMIN" | "VIEWER"
+      tipo_mov: "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +345,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["SUPER_ADMIN", "ADMIN", "VIEWER"],
+      tipo_mov: ["INGRESO", "SALIDA", "INTERNO", "PRESTAMO"],
+    },
   },
 } as const
