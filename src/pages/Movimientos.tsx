@@ -45,7 +45,7 @@ export default function MovimientosPage() {
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
     if (empresaActiva !== "TODAS") query = query.eq("empresa", empresaActiva);
-    if (tipoFilter !== "all") query = query.eq("tipo", tipoFilter);
+    if (tipoFilter !== "all") query = query.eq("tipo", tipoFilter as "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO");
     if (filtroBusqueda) query = query.ilike("concepto", `%${filtroBusqueda}%`);
 
     const { data, count } = await query;
