@@ -245,11 +245,11 @@ export default function DashboardPage() {
           <h3 className="text-sm font-medium text-foreground mb-4">Top Egresos por Categoría</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={topCats} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(155, 22%, 16%)" />
-              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
-              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
+              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#888888" }} />
+              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "#888888" }} />
               <Tooltip
-                contentStyle={{ background: "hsl(155, 28%, 10%)", border: "1px solid hsl(155, 22%, 16%)", borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number) => [formatMonto(v, true), "Total"]}
               />
               <Bar dataKey="total" fill="#E05C5C" radius={[0, 4, 4, 0]} />
