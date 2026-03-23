@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { MovimientoDetailSheet } from "@/components/movimientos/MovimientoDetailSheet";
 import { useAppStore } from "@/store/app.store";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMonto, formatMontoAbreviado } from "@/components/shared/MontoDisplay";
