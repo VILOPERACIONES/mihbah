@@ -234,9 +234,9 @@ export default function DashboardPage() {
                 contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number, name: string) => [formatMonto(v, true), name === "ingresos" ? "Ingresos" : name === "salidas" ? "Egresos" : "Balance"]}
               />
-              <Area type="monotone" dataKey="ingresos" stroke="#00C896" fill="#00C896" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="salidas" stroke="#E05C5C" fill="#E05C5C" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="balance" stroke="#8A9FFF" fill="none" strokeWidth={2} strokeDasharray="4 2" />
+              <Area type="monotone" dataKey="ingresos" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="salidas" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="balance" stroke="#4ADE80" fill="none" strokeWidth={2} strokeDasharray="4 2" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
