@@ -110,9 +110,11 @@ export default function AdminPage() {
 
 // ── Users Tab ───────────────────────────────────────────────
 function UsersTab() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
 
   async function fetchUsers() {
     setLoading(true);
@@ -132,6 +134,27 @@ function UsersTab() {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  async function handleToggleActive(u: UserRow) {
+    const { error } = await supabase.from("profiles").update({ activo: !u.activo } as any).eq("user_id", u.user_id);
+    if (error) return toast.error("Error: " + error.message);
+    toast.success(u.activo ? "Usuario desactivado" : "Usuario activado");
+    fetchUsers();
+  }
+
+  async function handleUpdateRole(userId: string, newRole: string) {
+    const { error } = await supabase.from("user_roles").update({ role: newRole } as any).eq("user_id", userId);
+    if (error) return toast.error("Error: " + error.message);
+    toast.success("Rol actualizado");
+    fetchUsers();
+  }
+
+  async function handleUpdateEmpresas(userId: string, empresas: string[]) {
+    const { error } = await supabase.from("profiles").update({ empresas } as any).eq("user_id", userId);
+    if (error) return toast.error("Error: " + error.message);
+    toast.success("Empresas actualizadas");
+    fetchUsers();
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -142,7 +165,7 @@ function UsersTab() {
               <Plus className="h-4 w-4" /> Nuevo Usuario
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-card border-border">
+          <DialogContent className="bg-card border-border" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle>Crear nuevo usuario</DialogTitle>
             </DialogHeader>
@@ -150,6 +173,25 @@ function UsersTab() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent className="bg-card border-border" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Editar usuario: {editingUser?.nombre}</DialogTitle>
+          </DialogHeader>
+          {editingUser && (
+            <EditUserForm
+              userRow={editingUser}
+              currentUserRole={currentUser?.rol ?? ""}
+              onUpdateRole={(role) => { handleUpdateRole(editingUser.user_id, role); setEditingUser(null); }}
+              onUpdateEmpresas={(empresas) => { handleUpdateEmpresas(editingUser.user_id, empresas); setEditingUser(null); }}
+              onToggleActive={() => { handleToggleActive(editingUser); setEditingUser(null); }}
+              onClose={() => setEditingUser(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Card className="border-border overflow-hidden">
         <div className="overflow-x-auto">
@@ -161,61 +203,162 @@ function UsersTab() {
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Empresas</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Estado</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Fecha</th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className="border-b border-border">
-                    <td colSpan={5} className="px-4 py-3"><div className="h-4 bg-muted rounded animate-pulse" /></td>
+                    <td colSpan={6} className="px-4 py-3"><div className="h-4 bg-muted rounded animate-pulse" /></td>
                   </tr>
                 ))
-              ) : users.map((u) => (
-                <tr key={u.id} className="border-b border-border hover:bg-card/80 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-xs font-semibold text-primary">{u.nombre.charAt(0).toUpperCase()}</span>
+              ) : users.map((u) => {
+                const isSelf = u.user_id === currentUser?.id;
+                return (
+                  <tr key={u.id} className="border-b border-border hover:bg-card/80 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-xs font-semibold text-primary">{u.nombre.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <span className="font-medium">{u.nombre}</span>
+                        {isSelf && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Tú</Badge>}
                       </div>
-                      <span className="font-medium">{u.nombre}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="secondary" className={cn(
-                      "text-xs",
-                      u.rol === "SUPER_ADMIN_DEV" && "bg-warning/20 text-warning border-warning/30",
-                      u.rol === "SUPER_ADMIN" && "bg-primary/20 text-primary border-primary/30",
-                      u.rol === "ADMIN" && "bg-turquesa/20 text-turquesa border-turquesa/30",
-                      u.rol === "VIEWER" && "bg-muted text-muted-foreground"
-                    )}>
-                      {u.rol === "SUPER_ADMIN_DEV" && <ShieldCheck className="h-3 w-3 mr-1" />}
-                      {u.rol === "SUPER_ADMIN" && <Shield className="h-3 w-3 mr-1" />}
-                      {u.rol}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
-                      {u.empresas.includes("*") ? (
-                        <Badge variant="outline" className="text-xs">Todas</Badge>
-                      ) : u.empresas.map((e) => (
-                        <Badge key={e} variant="outline" className="text-xs">{e}</Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={cn("text-xs font-medium", u.activo ? "text-positive" : "text-negative")}>
-                      {u.activo ? "Activo" : "Inactivo"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {new Date(u.created_at).toLocaleDateString("es-MX")}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant="secondary" className={cn(
+                        "text-xs",
+                        u.rol === "SUPER_ADMIN_DEV" && "bg-warning/20 text-warning border-warning/30",
+                        u.rol === "SUPER_ADMIN" && "bg-primary/20 text-primary border-primary/30",
+                        u.rol === "ADMIN" && "bg-turquesa/20 text-turquesa border-turquesa/30",
+                        u.rol === "VIEWER" && "bg-muted text-muted-foreground"
+                      )}>
+                        {u.rol === "SUPER_ADMIN_DEV" && <ShieldCheck className="h-3 w-3 mr-1" />}
+                        {u.rol === "SUPER_ADMIN" && <Shield className="h-3 w-3 mr-1" />}
+                        {u.rol}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1 flex-wrap">
+                        {u.empresas.includes("*") ? (
+                          <Badge variant="outline" className="text-xs">Todas</Badge>
+                        ) : u.empresas.map((e) => (
+                          <Badge key={e} variant="outline" className="text-xs">{e}</Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn("text-xs font-medium", u.activo ? "text-positive" : "text-negative")}>
+                        {u.activo ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {new Date(u.created_at).toLocaleDateString("es-MX")}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 hover:bg-primary/20 hover:text-primary"
+                          onClick={() => setEditingUser(u)}
+                          title="Editar"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        {!isSelf && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn("h-7 w-7", u.activo ? "hover:bg-negative/20 hover:text-negative" : "hover:bg-positive/20 hover:text-positive")}
+                            onClick={() => handleToggleActive(u)}
+                            title={u.activo ? "Desactivar" : "Activar"}
+                          >
+                            {u.activo ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </Card>
+    </div>
+  );
+}
+
+// ── Edit User Form ──────────────────────────────────────────
+function EditUserForm({
+  userRow,
+  currentUserRole,
+  onUpdateRole,
+  onUpdateEmpresas,
+  onToggleActive,
+  onClose,
+}: {
+  userRow: UserRow;
+  currentUserRole: string;
+  onUpdateRole: (role: string) => void;
+  onUpdateEmpresas: (empresas: string[]) => void;
+  onToggleActive: () => void;
+  onClose: () => void;
+}) {
+  const [rol, setRol] = useState(userRow.rol ?? "VIEWER");
+  const [empresas, setEmpresas] = useState<string[]>(userRow.empresas);
+
+  const availableRoles = currentUserRole === "SUPER_ADMIN_DEV"
+    ? ROL_OPTIONS
+    : (["SUPER_ADMIN", "ADMIN", "VIEWER"] as const);
+
+  function toggleEmpresa(emp: string) {
+    if (empresas.includes("*")) {
+      setEmpresas([emp]);
+    } else if (empresas.includes(emp)) {
+      const next = empresas.filter((e) => e !== emp);
+      setEmpresas(next.length === 0 ? ["*"] : next);
+    } else {
+      const next = [...empresas, emp];
+      setEmpresas(next.length === 3 ? ["*"] : next);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Rol</Label>
+        <Select value={rol} onValueChange={setRol}>
+          <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {availableRoles.map((r) => (
+              <SelectItem key={r} value={r}>{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Empresas asignadas</Label>
+        <div className="flex gap-2 flex-wrap">
+          {EMPRESAS_OPTIONS.map((emp) => (
+            <label key={emp} className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={empresas.includes("*") || empresas.includes(emp)}
+                onCheckedChange={() => toggleEmpresa(emp)}
+              />
+              <span className="text-sm">{emp}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button className="flex-1" onClick={() => { onUpdateRole(rol); onUpdateEmpresas(empresas); }}>
+          <Save className="h-4 w-4 mr-2" /> Guardar cambios
+        </Button>
+        <Button variant="outline" onClick={onClose}>Cancelar</Button>
+      </div>
     </div>
   );
 }
