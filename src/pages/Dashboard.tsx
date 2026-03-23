@@ -210,7 +210,7 @@ export default function DashboardPage() {
               <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
             </div>
             {"isPercent" in kpi && kpi.isPercent ? (
-              <span className={`font-money text-xl md:text-2xl font-semibold ${kpi.value >= 0 ? "text-primary" : "text-negative"}`}>
+              <span className={`font-money text-xl md:text-2xl font-semibold ${kpi.value >= 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
                 {kpi.value >= 0 ? "+" : ""}{kpi.value}%
               </span>
             ) : (
@@ -227,16 +227,16 @@ export default function DashboardPage() {
           <h3 className="text-sm font-medium text-foreground mb-4">Flujo Mensual</h3>
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={flujo}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(155, 22%, 16%)" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
-              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#888888" }} />
+              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#888888" }} />
               <Tooltip
-                contentStyle={{ background: "hsl(155, 28%, 10%)", border: "1px solid hsl(155, 22%, 16%)", borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number, name: string) => [formatMonto(v, true), name === "ingresos" ? "Ingresos" : name === "salidas" ? "Egresos" : "Balance"]}
               />
-              <Area type="monotone" dataKey="ingresos" stroke="#00C896" fill="#00C896" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="salidas" stroke="#E05C5C" fill="#E05C5C" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="balance" stroke="#8A9FFF" fill="none" strokeWidth={2} strokeDasharray="4 2" />
+              <Area type="monotone" dataKey="ingresos" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="salidas" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="balance" stroke="#4ADE80" fill="none" strokeWidth={2} strokeDasharray="4 2" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -245,14 +245,14 @@ export default function DashboardPage() {
           <h3 className="text-sm font-medium text-foreground mb-4">Top Egresos por Categoría</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={topCats} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(155, 22%, 16%)" />
-              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
-              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
+              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#888888" }} />
+              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "#888888" }} />
               <Tooltip
-                contentStyle={{ background: "hsl(155, 28%, 10%)", border: "1px solid hsl(155, 22%, 16%)", borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number) => [formatMonto(v, true), "Total"]}
               />
-              <Bar dataKey="total" fill="#E05C5C" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total" fill="#EF4444" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>

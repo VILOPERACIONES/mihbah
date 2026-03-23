@@ -36,9 +36,9 @@ export function MontoDisplay({ monto, tipo, showSign, className, size = "md" }: 
   const isNegative = tipo === "SALIDA" || (!tipo && monto < 0);
 
   const colorClass = isPositive
-    ? "text-[#00C896]"
+    ? "text-[#22C55E]"
     : isNegative
-    ? "text-[#E05C5C]"
+    ? "text-[#EF4444]"
     : "text-foreground";
 
   const sign = showSign ? (monto >= 0 ? "+" : "-") : "";
