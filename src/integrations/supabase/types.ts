@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_skills: {
+        Row: {
+          created_at: string
+          description: string
+          enabled: boolean
+          id: string
+          model: string
+          name: string
+          provider_id: string | null
+          system_prompt: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          id?: string
+          model?: string
+          name: string
+          provider_id?: string | null
+          system_prompt?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          id?: string
+          model?: string
+          name?: string
+          provider_id?: string | null
+          system_prompt?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_skills_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "llm_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversaciones: {
         Row: {
           created_at: string
@@ -74,6 +118,39 @@ export type Database = {
           nombre_archivo?: string
           subido_por_id?: string
           total_filas?: number
+        }
+        Relationships: []
+      }
+      llm_providers: {
+        Row: {
+          api_key_encrypted: string
+          base_url: string
+          created_at: string
+          id: string
+          is_default: boolean
+          models: string[]
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_encrypted?: string
+          base_url?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          models?: string[]
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_encrypted?: string
+          base_url?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          models?: string[]
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -255,7 +332,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "SUPER_ADMIN" | "ADMIN" | "VIEWER"
+      app_role: "SUPER_ADMIN" | "ADMIN" | "VIEWER" | "SUPER_ADMIN_DEV"
       tipo_mov: "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO"
     }
     CompositeTypes: {
@@ -384,7 +461,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["SUPER_ADMIN", "ADMIN", "VIEWER"],
+      app_role: ["SUPER_ADMIN", "ADMIN", "VIEWER", "SUPER_ADMIN_DEV"],
       tipo_mov: ["INGRESO", "SALIDA", "INTERNO", "PRESTAMO"],
     },
   },

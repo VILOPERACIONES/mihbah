@@ -29,9 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role").eq("user_id", authUser.id),
     ]);
 
-    const topRole = roles?.map((r: { role: string }) => r.role).includes("SUPER_ADMIN")
+    const roleList = roles?.map((r: { role: string }) => r.role) ?? [];
+    const topRole = roleList.includes("SUPER_ADMIN_DEV")
+      ? "SUPER_ADMIN_DEV"
+      : roleList.includes("SUPER_ADMIN")
       ? "SUPER_ADMIN"
-      : roles?.map((r: { role: string }) => r.role).includes("ADMIN")
+      : roleList.includes("ADMIN")
       ? "ADMIN"
       : "VIEWER";
 

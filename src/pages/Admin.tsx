@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, ChevronRight, Pencil } from "lucide-react";
+import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, Pencil, Shield, ShieldCheck } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,94 +31,33 @@ interface UserRow {
 interface LLMProvider {
   id: string;
   name: string;
-  baseUrl: string;
-  apiKey: string;
+  base_url: string;
+  api_key_encrypted: string;
   models: string[];
-  isDefault: boolean;
+  is_default: boolean;
 }
 
 interface AgentSkill {
   id: string;
   name: string;
   description: string;
-  systemPrompt: string;
+  system_prompt: string;
   enabled: boolean;
-  provider: string;
+  provider_id: string | null;
   model: string;
 }
 
 const EMPRESAS_OPTIONS = ["BM CORP", "MIHBAH", "YCDI"];
-const ROL_OPTIONS = ["SUPER_ADMIN", "ADMIN", "VIEWER"] as const;
-
-const DEFAULT_PROVIDERS: LLMProvider[] = [
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    baseUrl: "https://api.anthropic.com/v1",
-    apiKey: "",
-    models: ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"],
-    isDefault: true,
-  },
-  {
-    id: "openai",
-    name: "OpenAI",
-    baseUrl: "https://api.openai.com/v1",
-    apiKey: "",
-    models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
-    isDefault: false,
-  },
-  {
-    id: "google",
-    name: "Google Gemini",
-    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-    apiKey: "",
-    models: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
-    isDefault: false,
-  },
-  {
-    id: "custom",
-    name: "Custom / OpenAI Compatible",
-    baseUrl: "",
-    apiKey: "",
-    models: [],
-    isDefault: false,
-  },
-];
-
-const DEFAULT_SKILLS: AgentSkill[] = [
-  {
-    id: "cfo-virtual",
-    name: "CFO Virtual",
-    description: "Responde preguntas financieras con datos reales del sistema",
-    systemPrompt: `Eres el CFO virtual del grupo empresarial. Respondes preguntas sobre las finanzas con datos reales.
-REGLAS:
-- Siempre en español mexicano, tono ejecutivo y directo
-- Usa emojis de semáforo: ✅ bien, 🟡 atención, 🔴 crítico
-- Montos siempre con formato $#,### MXN
-- Respuestas de 2-3 párrafos máximo (conciso)
-- NUNCA inventes datos`,
-    enabled: true,
-    provider: "anthropic",
-    model: "claude-sonnet-4-20250514",
-  },
-  {
-    id: "analista",
-    name: "Analista de Tendencias",
-    description: "Analiza tendencias y proyecciones financieras",
-    systemPrompt: `Eres un analista financiero experto. Identificas tendencias, patrones y haces proyecciones basadas en datos históricos.
-Siempre responde en español mexicano con tono profesional.`,
-    enabled: false,
-    provider: "openai",
-    model: "gpt-4o",
-  },
-];
+const ROL_OPTIONS = ["SUPER_ADMIN_DEV", "SUPER_ADMIN", "ADMIN", "VIEWER"] as const;
 
 // ── Main Component ──────────────────────────────────────────
 export default function AdminPage() {
   const { user } = useAuth();
+  const isDevAdmin = user?.rol === "SUPER_ADMIN_DEV";
+  const isSuperAdmin = user?.rol === "SUPER_ADMIN" || isDevAdmin;
 
-  if (user?.rol !== "SUPER_ADMIN") {
-    return <EmptyState icon={Settings} title="Acceso denegado" description="Solo SUPER_ADMIN puede acceder a esta sección." />;
+  if (!isSuperAdmin) {
+    return <EmptyState icon={Settings} title="Acceso denegado" description="Solo administradores pueden acceder a esta sección." />;
   }
 
   return (
@@ -129,8 +68,15 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 className="text-xl font-semibold">Administración</h1>
-          <p className="text-sm text-muted-foreground">Usuarios, IA y configuración del sistema — Jade</p>
+          <p className="text-sm text-muted-foreground">
+            {isDevAdmin ? "Usuarios, IA y configuración del sistema" : "Gestión de usuarios"}
+          </p>
         </div>
+        {isDevAdmin && (
+          <Badge className="ml-auto bg-primary/20 text-primary border-primary/30 gap-1">
+            <ShieldCheck className="h-3 w-3" /> DEV ADMIN
+          </Badge>
+        )}
       </div>
 
       <Tabs defaultValue="users" className="space-y-4">
@@ -138,17 +84,25 @@ export default function AdminPage() {
           <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
             <Users className="h-4 w-4" /> Usuarios
           </TabsTrigger>
-          <TabsTrigger value="llm" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-            <Bot className="h-4 w-4" /> Conexiones LLM
-          </TabsTrigger>
-          <TabsTrigger value="skills" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-            <Sparkles className="h-4 w-4" /> Skills del Agente
-          </TabsTrigger>
+          {isDevAdmin && (
+            <>
+              <TabsTrigger value="llm" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                <Bot className="h-4 w-4" /> Conexiones LLM
+              </TabsTrigger>
+              <TabsTrigger value="skills" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                <Sparkles className="h-4 w-4" /> Skills del Agente
+              </TabsTrigger>
+            </>
+          )}
         </TabsList>
 
         <TabsContent value="users"><UsersTab /></TabsContent>
-        <TabsContent value="llm"><LLMTab /></TabsContent>
-        <TabsContent value="skills"><SkillsTab /></TabsContent>
+        {isDevAdmin && (
+          <>
+            <TabsContent value="llm"><LLMTab /></TabsContent>
+            <TabsContent value="skills"><SkillsTab /></TabsContent>
+          </>
+        )}
       </Tabs>
     </div>
   );
@@ -229,10 +183,13 @@ function UsersTab() {
                   <td className="px-4 py-3">
                     <Badge variant="secondary" className={cn(
                       "text-xs",
+                      u.rol === "SUPER_ADMIN_DEV" && "bg-warning/20 text-warning border-warning/30",
                       u.rol === "SUPER_ADMIN" && "bg-primary/20 text-primary border-primary/30",
                       u.rol === "ADMIN" && "bg-turquesa/20 text-turquesa border-turquesa/30",
                       u.rol === "VIEWER" && "bg-muted text-muted-foreground"
                     )}>
+                      {u.rol === "SUPER_ADMIN_DEV" && <ShieldCheck className="h-3 w-3 mr-1" />}
+                      {u.rol === "SUPER_ADMIN" && <Shield className="h-3 w-3 mr-1" />}
                       {u.rol}
                     </Badge>
                   </td>
@@ -265,12 +222,18 @@ function UsersTab() {
 
 // ── Create User Form ────────────────────────────────────────
 function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
+  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [password, setPassword] = useState("");
   const [rol, setRol] = useState<string>("VIEWER");
   const [empresas, setEmpresas] = useState<string[]>(["*"]);
   const [loading, setLoading] = useState(false);
+
+  // Only SUPER_ADMIN_DEV can create other SUPER_ADMIN_DEV users
+  const availableRoles = user?.rol === "SUPER_ADMIN_DEV" 
+    ? ROL_OPTIONS 
+    : (["SUPER_ADMIN", "ADMIN", "VIEWER"] as const);
 
   function toggleEmpresa(emp: string) {
     if (empresas.includes("*")) {
@@ -332,7 +295,7 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
           <Select value={rol} onValueChange={setRol}>
             <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {ROL_OPTIONS.map((r) => (
+              {availableRoles.map((r) => (
                 <SelectItem key={r} value={r}>{r}</SelectItem>
               ))}
             </SelectContent>
@@ -360,29 +323,82 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-// ── LLM Connections Tab ─────────────────────────────────────
+// ── LLM Connections Tab (DB-backed) ─────────────────────────
 function LLMTab() {
-  const [providers, setProviders] = useState<LLMProvider[]>(() => {
-    const saved = localStorage.getItem("sig-llm-providers");
-    return saved ? JSON.parse(saved) : DEFAULT_PROVIDERS;
-  });
+  const [providers, setProviders] = useState<LLMProvider[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [newModel, setNewModel] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
 
-  function save(updated: LLMProvider[]) {
+  const fetchProviders = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from("llm_providers").select("*").order("created_at");
+    setProviders((data as unknown as LLMProvider[]) ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchProviders(); }, [fetchProviders]);
+
+  async function saveProvider(provider: LLMProvider) {
+    setSaving((prev) => ({ ...prev, [provider.id]: true }));
+    const { error } = await supabase.from("llm_providers").upsert({
+      id: provider.id,
+      name: provider.name,
+      base_url: provider.base_url,
+      api_key_encrypted: provider.api_key_encrypted,
+      models: provider.models,
+      is_default: provider.is_default,
+    } as any);
+    setSaving((prev) => ({ ...prev, [provider.id]: false }));
+    if (error) {
+      toast.error("Error al guardar: " + error.message);
+    } else {
+      toast.success(`${provider.name} guardado`);
+      fetchProviders();
+    }
+  }
+
+  function updateLocal(id: string, patch: Partial<LLMProvider>) {
+    setProviders((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  }
+
+  async function setDefault(id: string) {
+    // Unset all, then set this one
+    const updated = providers.map((p) => ({ ...p, is_default: p.id === id }));
     setProviders(updated);
-    localStorage.setItem("sig-llm-providers", JSON.stringify(updated));
-    toast.success("Configuración guardada");
+    for (const p of updated) {
+      await supabase.from("llm_providers").update({ is_default: p.is_default } as any).eq("id", p.id);
+    }
+    toast.success("Proveedor por defecto actualizado");
+    fetchProviders();
   }
 
-  function updateProvider(id: string, patch: Partial<LLMProvider>) {
-    const updated = providers.map((p) => (p.id === id ? { ...p, ...patch } : p));
-    save(updated);
+  async function addProvider() {
+    const newProv: any = {
+      name: "Nuevo Proveedor",
+      base_url: "",
+      api_key_encrypted: "",
+      models: [],
+      is_default: false,
+    };
+    const { data, error } = await supabase.from("llm_providers").insert(newProv).select().single();
+    if (error) {
+      toast.error("Error: " + error.message);
+    } else {
+      toast.success("Proveedor creado");
+      fetchProviders();
+    }
   }
 
-  function setDefault(id: string) {
-    const updated = providers.map((p) => ({ ...p, isDefault: p.id === id }));
-    save(updated);
+  async function deleteProvider(id: string) {
+    const { error } = await supabase.from("llm_providers").delete().eq("id", id);
+    if (error) {
+      toast.error("Error: " + error.message);
+    } else {
+      toast.success("Proveedor eliminado");
+      fetchProviders();
+    }
   }
 
   function addModel(providerId: string) {
@@ -390,160 +406,193 @@ function LLMTab() {
     if (!model) return;
     const prov = providers.find((p) => p.id === providerId);
     if (!prov || prov.models.includes(model)) return;
-    updateProvider(providerId, { models: [...prov.models, model] });
+    const updated = { ...prov, models: [...prov.models, model] };
+    updateLocal(providerId, { models: updated.models });
     setNewModel((prev) => ({ ...prev, [providerId]: "" }));
   }
 
   function removeModel(providerId: string, model: string) {
     const prov = providers.find((p) => p.id === providerId);
     if (!prov) return;
-    updateProvider(providerId, { models: prov.models.filter((m) => m !== model) });
+    updateLocal(providerId, { models: prov.models.filter((m) => m !== model) });
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Configura las conexiones a proveedores de IA. Los cambios se guardan automáticamente al editar.
+          Configura las conexiones a proveedores de IA. Guarda los cambios con el botón de cada proveedor.
         </p>
-        <Badge variant="outline" className="text-xs gap-1.5 text-jade border-jade/30 bg-jade/10">
-          <span className="h-1.5 w-1.5 rounded-full bg-jade animate-pulse" />
-          Autoguardado activo
-        </Badge>
+        <Button size="sm" className="gap-2" onClick={addProvider}>
+          <Plus className="h-4 w-4" /> Agregar Proveedor
+        </Button>
       </div>
 
-      <div className="grid gap-4">
-        {providers.map((prov) => (
-          <Card key={prov.id} className={cn("p-4 border-border transition-colors", prov.isDefault && "border-primary/50 bg-primary/5")}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold",
-                  prov.id === "anthropic" && "bg-warning/20 text-warning",
-                  prov.id === "openai" && "bg-positive/20 text-positive",
-                  prov.id === "google" && "bg-indigo/20 text-indigo",
-                  prov.id === "custom" && "bg-muted text-muted-foreground",
-                )}>
-                  {prov.name.charAt(0)}
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <Card key={i} className="p-4 border-border">
+              <div className="h-20 bg-muted rounded animate-pulse" />
+            </Card>
+          ))}
+        </div>
+      ) : providers.length === 0 ? (
+        <EmptyState icon={Bot} title="Sin proveedores" description="Agrega tu primer proveedor LLM para comenzar." />
+      ) : (
+        <div className="grid gap-4">
+          {providers.map((prov) => (
+            <Card key={prov.id} className={cn("p-4 border-border transition-colors", prov.is_default && "border-primary/50 bg-primary/5")}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold bg-primary/20 text-primary">
+                    {prov.name.charAt(0)}
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      value={prov.name}
+                      onChange={(e) => updateLocal(prov.id, { name: e.target.value })}
+                      className="bg-transparent border-none p-0 h-auto font-medium text-sm focus-visible:ring-0"
+                    />
+                    <Input
+                      value={prov.base_url}
+                      onChange={(e) => updateLocal(prov.id, { base_url: e.target.value })}
+                      placeholder="https://api.provider.com/v1"
+                      className="bg-transparent border-none p-0 h-auto text-xs text-muted-foreground focus-visible:ring-0"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-medium text-sm">{prov.name}</h3>
-                  <p className="text-xs text-muted-foreground">{prov.baseUrl || "URL no configurada"}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {prov.isDefault && <Badge className="bg-primary/20 text-primary text-xs">Default</Badge>}
-                {!prov.isDefault && (
-                  <Button variant="ghost" size="sm" onClick={() => setDefault(prov.id)} className="text-xs">
-                    Usar como default
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {prov.id === "custom" && (
-              <div className="mb-3">
-                <Label className="text-xs text-muted-foreground">Base URL</Label>
-                <Input
-                  value={prov.baseUrl}
-                  onChange={(e) => updateProvider(prov.id, { baseUrl: e.target.value })}
-                  placeholder="https://api.custom-llm.com/v1"
-                  className="bg-background mt-1"
-                />
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs text-muted-foreground">API Key</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    type={showKeys[prov.id] ? "text" : "password"}
-                    value={prov.apiKey}
-                    onChange={(e) => updateProvider(prov.id, { apiKey: e.target.value })}
-                    placeholder={`sk-...`}
-                    className="bg-background flex-1"
-                  />
+                <div className="flex items-center gap-2">
+                  {prov.is_default && <Badge className="bg-primary/20 text-primary text-xs">Default</Badge>}
+                  {!prov.is_default && (
+                    <Button variant="ghost" size="sm" onClick={() => setDefault(prov.id)} className="text-xs">
+                      Usar como default
+                    </Button>
+                  )}
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowKeys((prev) => ({ ...prev, [prov.id]: !prev[prov.id] }))}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 text-xs"
+                    disabled={saving[prov.id]}
+                    onClick={() => saveProvider(prov)}
                   >
-                    {showKeys[prov.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <Save className="h-3 w-3" />
+                    {saving[prov.id] ? "Guardando..." : "Guardar"}
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-negative" onClick={() => deleteProvider(prov.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
 
-              <div>
-                <Label className="text-xs text-muted-foreground">Modelos disponibles</Label>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {prov.models.map((m) => (
-                    <Badge key={m} variant="outline" className="text-xs gap-1">
-                      {m}
-                      <button onClick={() => removeModel(prov.id, m)} className="ml-1 hover:text-negative">×</button>
-                    </Badge>
-                  ))}
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">API Key</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type={showKeys[prov.id] ? "text" : "password"}
+                      value={prov.api_key_encrypted}
+                      onChange={(e) => updateLocal(prov.id, { api_key_encrypted: e.target.value })}
+                      placeholder="sk-..."
+                      className="bg-background flex-1"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowKeys((prev) => ({ ...prev, [prov.id]: !prev[prov.id] }))}
+                    >
+                      {showKeys[prov.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2 mt-2">
-                  <Input
-                    value={newModel[prov.id] ?? ""}
-                    onChange={(e) => setNewModel((prev) => ({ ...prev, [prov.id]: e.target.value }))}
-                    placeholder="Agregar modelo..."
-                    className="bg-background text-xs h-8"
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addModel(prov.id))}
-                  />
-                  <Button size="sm" variant="outline" onClick={() => addModel(prov.id)} className="h-8 text-xs">
-                    <Plus className="h-3 w-3" />
-                  </Button>
+
+                <div>
+                  <Label className="text-xs text-muted-foreground">Modelos disponibles</Label>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {prov.models.map((m) => (
+                      <Badge key={m} variant="outline" className="text-xs gap-1">
+                        {m}
+                        <button onClick={() => removeModel(prov.id, m)} className="ml-1 hover:text-negative">×</button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      value={newModel[prov.id] ?? ""}
+                      onChange={(e) => setNewModel((prev) => ({ ...prev, [prov.id]: e.target.value }))}
+                      placeholder="Agregar modelo..."
+                      className="bg-background text-xs h-8"
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addModel(prov.id))}
+                    />
+                    <Button size="sm" variant="outline" onClick={() => addModel(prov.id)} className="h-8 text-xs">
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Agent Skills Tab ────────────────────────────────────────
+// ── Agent Skills Tab (DB-backed) ────────────────────────────
 function SkillsTab() {
-  const [skills, setSkills] = useState<AgentSkill[]>(() => {
-    const saved = localStorage.getItem("sig-agent-skills");
-    return saved ? JSON.parse(saved) : DEFAULT_SKILLS;
-  });
+  const [skills, setSkills] = useState<AgentSkill[]>([]);
+  const [providers, setProviders] = useState<LLMProvider[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const providers: LLMProvider[] = (() => {
-    const saved = localStorage.getItem("sig-llm-providers");
-    return saved ? JSON.parse(saved) : DEFAULT_PROVIDERS;
-  })();
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const [{ data: skillsData }, { data: provsData }] = await Promise.all([
+      supabase.from("agent_skills").select("*").order("created_at"),
+      supabase.from("llm_providers").select("*").order("created_at"),
+    ]);
+    setSkills((skillsData as unknown as AgentSkill[]) ?? []);
+    setProviders((provsData as unknown as LLMProvider[]) ?? []);
+    setLoading(false);
+  }, []);
 
-  function saveSkills(updated: AgentSkill[]) {
-    setSkills(updated);
-    localStorage.setItem("sig-agent-skills", JSON.stringify(updated));
-    toast.success("Skills guardados");
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  async function toggleSkill(id: string) {
+    const skill = skills.find((s) => s.id === id);
+    if (!skill) return;
+    await supabase.from("agent_skills").update({ enabled: !skill.enabled } as any).eq("id", id);
+    fetchData();
   }
 
-  function toggleSkill(id: string) {
-    saveSkills(skills.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
-  }
-
-  function updateSkill(id: string, patch: Partial<AgentSkill>) {
-    saveSkills(skills.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-  }
-
-  function deleteSkill(id: string) {
-    saveSkills(skills.filter((s) => s.id !== id));
+  async function deleteSkill(id: string) {
+    await supabase.from("agent_skills").delete().eq("id", id);
     if (editingId === id) setEditingId(null);
+    fetchData();
+    toast.success("Skill eliminado");
   }
 
-  function createSkill(skill: AgentSkill) {
-    saveSkills([...skills, skill]);
-    setShowCreate(false);
+  async function saveSkill(id: string, patch: Partial<AgentSkill>) {
+    await supabase.from("agent_skills").update(patch as any).eq("id", id);
+    setEditingId(null);
+    fetchData();
+    toast.success("Skill guardado");
   }
 
-  const allModels = providers.flatMap((p) => p.models.map((m) => ({ provider: p.id, providerName: p.name, model: m })));
+  async function createSkill(skill: Omit<AgentSkill, "id">) {
+    const { error } = await supabase.from("agent_skills").insert(skill as any);
+    if (error) {
+      toast.error("Error: " + error.message);
+    } else {
+      toast.success("Skill creado");
+      setShowCreate(false);
+      fetchData();
+    }
+  }
+
+  const allModels = providers.flatMap((p) =>
+    p.models.map((m) => ({ provider_id: p.id, providerName: p.name, model: m }))
+  );
 
   return (
     <div className="space-y-4">
@@ -563,67 +612,84 @@ function SkillsTab() {
             </DialogHeader>
             <SkillForm
               allModels={allModels}
-              onSubmit={(s) => createSkill({ ...s, id: crypto.randomUUID() })}
+              onSubmit={createSkill}
               onCancel={() => setShowCreate(false)}
             />
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid gap-3">
-        {skills.map((skill) => (
-          <Card key={skill.id} className={cn(
-            "border-border transition-all",
-            skill.enabled ? "border-primary/30" : "opacity-60"
-          )}>
-            {editingId === skill.id ? (
-              <div className="p-4">
-                <SkillForm
-                  initial={skill}
-                  allModels={allModels}
-                  onSubmit={(updated) => { updateSkill(skill.id, updated); setEditingId(null); }}
-                  onCancel={() => setEditingId(null)}
-                />
-              </div>
-            ) : (
-              <div className="p-4 flex items-start gap-4">
-                <button
-                  onClick={() => toggleSkill(skill.id)}
-                  className={cn(
-                    "mt-0.5 h-5 w-9 rounded-full transition-colors relative shrink-0",
-                    skill.enabled ? "bg-primary" : "bg-muted"
-                  )}
-                >
-                  <span className={cn(
-                    "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
-                    skill.enabled ? "translate-x-4" : "translate-x-0.5"
-                  )} />
-                </button>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium text-sm">{skill.name}</h3>
-                    <Badge variant="outline" className="text-[10px]">{skill.provider}/{skill.model}</Badge>
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <Card key={i} className="p-4 border-border">
+              <div className="h-16 bg-muted rounded animate-pulse" />
+            </Card>
+          ))}
+        </div>
+      ) : skills.length === 0 ? (
+        <EmptyState icon={Sparkles} title="Sin skills" description="Crea tu primer skill para personalizar a Jade AI." />
+      ) : (
+        <div className="grid gap-3">
+          {skills.map((skill) => {
+            const prov = providers.find((p) => p.id === skill.provider_id);
+            return (
+              <Card key={skill.id} className={cn(
+                "border-border transition-all",
+                skill.enabled ? "border-primary/30" : "opacity-60"
+              )}>
+                {editingId === skill.id ? (
+                  <div className="p-4">
+                    <SkillForm
+                      initial={skill}
+                      allModels={allModels}
+                      onSubmit={(updated) => saveSkill(skill.id, updated)}
+                      onCancel={() => setEditingId(null)}
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground">{skill.description}</p>
-                  <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 italic">
-                    "{skill.systemPrompt.slice(0, 120)}..."
-                  </p>
-                </div>
+                ) : (
+                  <div className="p-4 flex items-start gap-4">
+                    <button
+                      onClick={() => toggleSkill(skill.id)}
+                      className={cn(
+                        "mt-0.5 h-5 w-9 rounded-full transition-colors relative shrink-0",
+                        skill.enabled ? "bg-primary" : "bg-muted"
+                      )}
+                    >
+                      <span className={cn(
+                        "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
+                        skill.enabled ? "translate-x-4" : "translate-x-0.5"
+                      )} />
+                    </button>
 
-                <div className="flex gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(skill.id)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-negative" onClick={() => deleteSkill(skill.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Card>
-        ))}
-      </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-sm">{skill.name}</h3>
+                        <Badge variant="outline" className="text-[10px]">
+                          {prov?.name ?? "Sin proveedor"} / {skill.model}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{skill.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 italic">
+                        "{skill.system_prompt.slice(0, 120)}..."
+                      </p>
+                    </div>
+
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(skill.id)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-negative" onClick={() => deleteSkill(skill.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -636,27 +702,30 @@ function SkillForm({
   onCancel,
 }: {
   initial?: Partial<AgentSkill>;
-  allModels: { provider: string; providerName: string; model: string }[];
+  allModels: { provider_id: string; providerName: string; model: string }[];
   onSubmit: (skill: Omit<AgentSkill, "id">) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt ?? "");
+  const [systemPrompt, setSystemPrompt] = useState(initial?.system_prompt ?? "");
   const [selectedModel, setSelectedModel] = useState(
-    initial ? `${initial.provider}/${initial.model}` : (allModels[0] ? `${allModels[0].provider}/${allModels[0].model}` : "")
+    initial?.provider_id && initial?.model
+      ? `${initial.provider_id}/${initial.model}`
+      : allModels[0] ? `${allModels[0].provider_id}/${allModels[0].model}` : ""
   );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const [provider, ...modelParts] = selectedModel.split("/");
-    const model = modelParts.join("/");
+    const slashIdx = selectedModel.indexOf("/");
+    const provider_id = selectedModel.slice(0, slashIdx);
+    const model = selectedModel.slice(slashIdx + 1);
     onSubmit({
       name,
       description,
-      systemPrompt,
+      system_prompt: systemPrompt,
       enabled: initial?.enabled ?? true,
-      provider,
+      provider_id,
       model,
     });
   }
@@ -671,10 +740,10 @@ function SkillForm({
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Proveedor / Modelo</Label>
           <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="bg-background"><SelectValue placeholder="Seleccionar modelo" /></SelectTrigger>
             <SelectContent>
               {allModels.map((m) => (
-                <SelectItem key={`${m.provider}/${m.model}`} value={`${m.provider}/${m.model}`}>
+                <SelectItem key={`${m.provider_id}/${m.model}`} value={`${m.provider_id}/${m.model}`}>
                   {m.providerName} — {m.model}
                 </SelectItem>
               ))}

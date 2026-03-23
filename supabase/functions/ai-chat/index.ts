@@ -19,15 +19,25 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(supabaseUrl, serviceKey);
 
-    // Auth - get user from token
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.replace("Bearer ", "");
+    const { mensaje, empresaFiltro, history } = await req.json();
 
-    const { mensaje, empresaFiltro, conversacionId, history } = await req.json();
-
-    // Determine empresa filter for queries
     const empFilter =
       empresaFiltro && empresaFiltro !== "TODAS" ? empresaFiltro : null;
+
+    // ── Load skills from DB ──
+    const { data: skillsData } = await sb
+      .from("agent_skills")
+      .select("*")
+      .eq("enabled", true)
+      .order("created_at");
+
+    const enabledSkills = skillsData ?? [];
+
+    // Combine all enabled skill prompts
+    const skillPrompts = enabledSkills
+      .map((s: any) => s.system_prompt)
+      .filter(Boolean)
+      .join("\n\n---\n\n");
 
     // ── Gather financial context in parallel ──
     const now = new Date();
@@ -36,35 +46,28 @@ serve(async (req) => {
 
     const [kpisRes, latestRes, flujoRes, topCatRes, alertsRes, empresasRes] =
       await Promise.all([
-        // KPIs for latest month with data
         sb.rpc("get_kpis_mes", {
           _anio: currentYear,
           _mes: currentMonth,
           ...(empFilter ? { _empresa: empFilter } : {}),
         }),
-        // Latest month with data
         sb.rpc("get_latest_month"),
-        // Cash flow last 12 months
         sb.rpc("get_flujo_mensual", {
           _anio_desde: currentYear - 1,
           ...(empFilter ? { _empresa: empFilter } : {}),
         }),
-        // Top expense categories
         sb.rpc("get_top_categorias", {
           _anio: currentYear,
           _mes: currentMonth,
           _limite: 10,
           ...(empFilter ? { _empresa: empFilter } : {}),
         }),
-        // Recent large movements for alerts
         sb
           .from("movimientos")
           .select("fecha, tipo, monto, concepto, empresa, categoria, cuenta")
           .eq("activo", true)
           .order("fecha", { ascending: false })
-          .limit(30)
-          .then((r) => r),
-        // Available empresas
+          .limit(30),
         sb
           .from("movimientos")
           .select("empresa")
@@ -77,7 +80,6 @@ serve(async (req) => {
           }),
       ]);
 
-    // If latest month differs from current, also get KPIs for that month
     const latestMonth = latestRes.data?.[0];
     let kpisLatest = kpisRes.data;
     if (
@@ -96,23 +98,20 @@ serve(async (req) => {
     const recentMovs = alertsRes.data ?? [];
     const alerts: string[] = [];
 
-    // Check for large single transactions
     const avgMonto =
       recentMovs.reduce(
         (s: number, m: { monto: number }) => s + Math.abs(m.monto),
         0
       ) / (recentMovs.length || 1);
     const largeOnes = recentMovs.filter(
-      (m: { monto: number; concepto: string; empresa: string }) =>
-        Math.abs(m.monto) > avgMonto * 3
+      (m: { monto: number }) => Math.abs(m.monto) > avgMonto * 3
     );
     for (const m of largeOnes.slice(0, 3)) {
       alerts.push(
-        `⚠️ Movimiento inusual: ${m.concepto} por $${Math.abs(m.monto).toLocaleString()} en ${m.empresa}`
+        `⚠️ Movimiento inusual: ${(m as any).concepto} por $${Math.abs(m.monto).toLocaleString()} en ${(m as any).empresa}`
       );
     }
 
-    // Check balance (ingresos vs salidas)
     const kpi = kpisLatest as Record<string, number> | null;
     if (kpi) {
       const balance = (kpi.ingresos ?? 0) - (kpi.salidas ?? 0);
@@ -132,27 +131,16 @@ serve(async (req) => {
     }
 
     const mesesNombre = [
-      "",
-      "Enero",
-      "Febrero",
-      "Marzo",
-      "Abril",
-      "Mayo",
-      "Junio",
-      "Julio",
-      "Agosto",
-      "Septiembre",
-      "Octubre",
-      "Noviembre",
-      "Diciembre",
+      "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
     ];
 
     const periodoLabel = latestMonth
       ? `${mesesNombre[latestMonth.mes]} ${latestMonth.anio}`
       : `${mesesNombre[currentMonth]} ${currentYear}`;
 
-    // ── System prompt with real data ──
-    const systemPrompt = `Eres Jade AI, el CFO virtual inteligente de la plataforma financiera Jade.
+    // ── System prompt with real data + skills ──
+    const basePrompt = `Eres Jade AI, el CFO virtual inteligente de la plataforma financiera Jade.
 Tu tono es directo, ejecutivo, claro y en español mexicano. Usas emojis financieros cuando ayudan.
 Tienes acceso COMPLETO a los datos financieros reales de la empresa.
 
@@ -181,24 +169,25 @@ ${alerts.length > 0 ? alerts.join("\n") : "Sin alertas críticas."}
 - Si te preguntan algo que no está en los datos, dilo claramente.
 - Ofrece insights proactivos: tendencias, riesgos, comparaciones mes a mes.
 - Si el usuario pregunta sobre alertas, reporta las detectadas arriba.
-- Sé conciso pero completo. Usa listas y bullets para claridad.
-- Si preguntan sobre un periodo o empresa diferente al filtro actual, indica que cambien el filtro en la interfaz.`;
+- Sé conciso pero completo. Usa listas y bullets para claridad.`;
 
-    // ── Build messages array ──
+    const fullSystemPrompt = skillPrompts
+      ? `${basePrompt}\n\n## SKILLS ACTIVOS:\n${skillPrompts}`
+      : basePrompt;
+
+    // ── Build messages ──
     const aiMessages: { role: string; content: string }[] = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: fullSystemPrompt },
     ];
 
-    // Add conversation history if provided
     if (history && Array.isArray(history)) {
       for (const msg of history) {
         aiMessages.push({ role: msg.role, content: msg.content });
       }
     }
-
     aiMessages.push({ role: "user", content: mensaje });
 
-    // ── Call Lovable AI Gateway with streaming ──
+    // ── Call Lovable AI Gateway ──
     const aiResponse = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
@@ -234,7 +223,6 @@ ${alerts.length > 0 ? alerts.join("\n") : "Sin alertas críticas."}
       throw new Error(`AI gateway error: ${status}`);
     }
 
-    // Stream the response through
     return new Response(aiResponse.body, {
       headers: {
         ...corsHeaders,

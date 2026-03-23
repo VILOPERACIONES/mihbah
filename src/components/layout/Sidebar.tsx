@@ -40,7 +40,7 @@ export function AppSidebar({ onClose, collapsed = false }: SidebarProps) {
   const { user, signOut } = useAuth();
   const { sidebarCollapsed, setSidebarCollapsed } = useAppStore();
   const location = useLocation();
-  const isAdmin = user?.rol === "SUPER_ADMIN" || user?.rol === "ADMIN";
+  const isAdmin = user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "SUPER_ADMIN" || user?.rol === "ADMIN";
 
   // On mobile overlay, never use collapsed mode
   const isCollapsed = onClose ? false : (collapsed || sidebarCollapsed);
