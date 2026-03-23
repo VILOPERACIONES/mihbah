@@ -8,6 +8,8 @@ interface AppStore {
   setEmpresaActiva: (e: EmpresaFiltro) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (v: boolean) => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (v: boolean) => void;
   chatOpen: boolean;
   setChatOpen: (v: boolean) => void;
   filtroTipo: string[];
@@ -28,6 +30,8 @@ export const useAppStore = create<AppStore>()(
       setEmpresaActiva: (e) => set({ empresaActiva: e }),
       sidebarOpen: false,
       setSidebarOpen: (v) => set({ sidebarOpen: v }),
+      sidebarCollapsed: false,
+      setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
       chatOpen: false,
       setChatOpen: (v) => set({ chatOpen: v }),
       filtroTipo: [],
@@ -49,6 +53,6 @@ export const useAppStore = create<AppStore>()(
           filtroBusqueda: "",
         }),
     }),
-    { name: "sig-app-state", partialize: (state) => ({ empresaActiva: state.empresaActiva }) }
+    { name: "sig-app-state", partialize: (state) => ({ empresaActiva: state.empresaActiva, sidebarCollapsed: state.sidebarCollapsed }) }
   )
 );
