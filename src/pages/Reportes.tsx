@@ -117,7 +117,7 @@ function DrillPanel({ items, title, onClose, onItemClick }: { items: DrillItem[]
           </thead>
           <tbody>
             {items.slice(0, 50).map(item => (
-              <tr key={item.id} className="border-b border-border/50 hover:bg-card/80">
+              <tr key={item.id} className="border-b border-border/50 hover:bg-card/80 cursor-pointer" onClick={() => onItemClick(item.id)}>
                 <td className="px-3 py-1.5">{new Date(item.fecha).toLocaleDateString("es-MX")}</td>
                 <td className="px-3 py-1.5">{item.empresa}</td>
                 <td className="px-3 py-1.5 max-w-[200px] truncate">{item.concepto}</td>
