@@ -231,7 +231,7 @@ export default function DashboardPage() {
               <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#888888" }} />
               <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#888888" }} />
               <Tooltip
-                contentStyle={{ background: "hsl(155, 28%, 10%)", border: "1px solid hsl(155, 22%, 16%)", borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number, name: string) => [formatMonto(v, true), name === "ingresos" ? "Ingresos" : name === "salidas" ? "Egresos" : "Balance"]}
               />
               <Area type="monotone" dataKey="ingresos" stroke="#00C896" fill="#00C896" fillOpacity={0.15} strokeWidth={2} />
