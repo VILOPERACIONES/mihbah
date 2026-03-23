@@ -145,6 +145,7 @@ export default function ReportesPage() {
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
   const [drillItems, setDrillItems] = useState<DrillItem[]>([]);
   const [drillTitle, setDrillTitle] = useState("");
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const empresa = empresaActiva === "TODAS" ? null : empresaActiva;
 
