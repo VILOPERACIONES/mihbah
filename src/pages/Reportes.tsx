@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/app.store";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMonto, formatMontoAbreviado } from "@/components/shared/MontoDisplay";
+import { generateReportPDF } from "@/lib/generateReportPDF";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
