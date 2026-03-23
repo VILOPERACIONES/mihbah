@@ -210,7 +210,7 @@ export default function DashboardPage() {
               <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
             </div>
             {"isPercent" in kpi && kpi.isPercent ? (
-              <span className={`font-money text-xl md:text-2xl font-semibold ${kpi.value >= 0 ? "text-primary" : "text-negative"}`}>
+              <span className={`font-money text-xl md:text-2xl font-semibold ${kpi.value >= 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
                 {kpi.value >= 0 ? "+" : ""}{kpi.value}%
               </span>
             ) : (
