@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAppStore } from "@/store/app.store";
 import { useAuth } from "@/hooks/useAuth";
-import { Send, Bot, X } from "lucide-react";
+import { Send, Bot, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,9 +13,10 @@ interface ChatMessage {
 
 const QUICK_QUESTIONS = [
   "¿Cómo estamos este mes?",
-  "Top egresos",
-  "Comparar empresas",
-  "Flujo reciente",
+  "Top egresos y alertas",
+  "Comparar ingresos vs salidas",
+  "¿Cuáles son las alertas principales?",
+  "Resumen ejecutivo del periodo",
 ];
 
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
@@ -24,14 +25,12 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [conversacionId, setConversacionId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevEmpresa = useRef(empresaActiva);
 
   useEffect(() => {
     if (prevEmpresa.current !== empresaActiva) {
       setMessages([]);
-      setConversacionId(null);
       prevEmpresa.current = empresaActiva;
     }
   }, [empresaActiva]);
@@ -46,8 +45,22 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
     setIsStreaming(true);
 
     const userMsg: ChatMessage = { role: "user", content: texto, ts: Date.now() };
-    const assistantMsg: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setMessages((prev) => [...prev, userMsg]);
+
+    // Build history from existing messages (exclude the new one)
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+
+    let assistantSoFar = "";
+    const upsertAssistant = (chunk: string) => {
+      assistantSoFar += chunk;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant") {
+          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+        }
+        return [...prev, { role: "assistant", content: assistantSoFar, ts: Date.now() }];
+      });
+    };
 
     try {
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
@@ -55,15 +68,19 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(await (await import("@/integrations/supabase/client")).supabase.auth.getSession()).data.session?.access_token}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
           mensaje: texto,
           empresaFiltro: empresaActiva,
-          conversacionId,
+          history,
         }),
       });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Error desconocido" }));
+        throw new Error(errData.error || `Error ${res.status}`);
+      }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -73,37 +90,58 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
 
-        for (const line of lines) {
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
           if (!line.startsWith("data: ")) continue;
-          const raw = line.slice(6).trim();
-          if (raw === "[DONE]") continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+
           try {
-            const data = JSON.parse(raw);
-            if (data.text) {
-              setMessages((prev) => {
-                const msgs = [...prev];
-                msgs[msgs.length - 1] = {
-                  ...msgs[msgs.length - 1],
-                  content: msgs[msgs.length - 1].content + data.text,
-                };
-                return msgs;
-              });
-            }
-            if (data.conversacionId) setConversacionId(data.conversacionId);
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) upsertAssistant(content);
+          } catch {
+            buffer = line + "\n" + buffer;
+            break;
+          }
+        }
+      }
+
+      // Flush remaining buffer
+      if (buffer.trim()) {
+        for (let raw of buffer.split("\n")) {
+          if (!raw) continue;
+          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+          if (!raw.startsWith("data: ")) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) upsertAssistant(content);
           } catch {}
         }
       }
-    } catch {
+
+      // If no content was received, show fallback
+      if (!assistantSoFar) {
+        upsertAssistant("No pude generar una respuesta. Intenta de nuevo.");
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Error al conectar con el asistente.";
       setMessages((prev) => {
-        const msgs = [...prev];
-        msgs[msgs.length - 1] = {
-          ...msgs[msgs.length - 1],
-          content: "Error al conectar con el asistente. Intenta de nuevo.",
-        };
-        return msgs;
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant") {
+          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: `⚠️ ${errorMsg}` } : m));
+        }
+        return [...prev, { role: "assistant", content: `⚠️ ${errorMsg}`, ts: Date.now() }];
       });
     } finally {
       setIsStreaming(false);
@@ -137,7 +175,10 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
               Hola {user?.nombre?.split(" ")[0] ?? ""}! Soy tu CFO virtual.
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Pregúntame sobre las finanzas de {empresaActiva === "TODAS" ? "el grupo" : empresaActiva}
+              Tengo acceso a todos los datos financieros de {empresaActiva === "TODAS" ? "el grupo" : empresaActiva}
+            </p>
+            <p className="text-xs text-primary/60 mt-2">
+              📊 KPIs • 📈 Flujo de caja • ⚠️ Alertas • 💰 Movimientos
             </p>
           </div>
         )}
@@ -146,7 +187,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
           <div
             key={i}
             className={cn(
-              "max-w-[90%] rounded-xl px-3 py-2 text-sm",
+              "max-w-[90%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap",
               msg.role === "user"
                 ? "ml-auto bg-primary text-primary-foreground"
                 : "mr-auto bg-card text-foreground border border-border"
@@ -197,7 +238,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Pregunta algo..."
+            placeholder="Pregunta sobre finanzas..."
             disabled={isStreaming}
             className="flex-1 bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
