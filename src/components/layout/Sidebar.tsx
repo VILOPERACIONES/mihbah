@@ -9,6 +9,7 @@ import {
   Landmark,
   ClipboardList,
   Settings,
+  X,
 } from "lucide-react";
 import logoJade from "@/assets/logo-jade.png";
 
@@ -25,29 +26,32 @@ const ADMIN_ITEMS = [
   { to: "/admin", label: "Administración", icon: Settings },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const location = useLocation();
   const isAdmin = user?.rol === "SUPER_ADMIN" || user?.rol === "ADMIN";
 
   return (
-    <aside
-      className="w-[var(--sidebar-width)] h-full flex flex-col border-r border-border"
-      style={{ background: "hsl(var(--bg-surface))" }}
-    >
+    <>
       {/* Logo header */}
-      <div className="px-4 py-4 flex items-center gap-2.5">
+      <div className="px-4 py-4 flex items-center gap-2.5 shrink-0">
         <img src={logoJade} alt="Jade" className="h-7 w-7 rounded-md object-contain" />
         <span className="font-semibold text-sm text-foreground tracking-tight">Jade</span>
+        {onClose && (
+          <button onClick={onClose} className="ml-auto lg:hidden text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 py-2 px-3 space-y-1">
+      <nav className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const active = location.pathname === item.to;
           return (
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative",
                 active
@@ -73,6 +77,7 @@ export function AppSidebar() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative",
                     active
@@ -93,7 +98,7 @@ export function AppSidebar() {
       </nav>
 
       {user && (
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border shrink-0">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
               <span className="text-xs font-semibold text-primary">
@@ -107,6 +112,6 @@ export function AppSidebar() {
           </div>
         </div>
       )}
-    </aside>
+    </>
   );
 }
