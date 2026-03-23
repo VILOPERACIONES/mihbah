@@ -10,6 +10,7 @@ import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar } 
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { MovimientoDetailSheet } from "@/components/movimientos/MovimientoDetailSheet";
 
 interface KPIs {
   ingresos: number;
@@ -56,6 +57,7 @@ export default function DashboardPage() {
   const [selectedAnio, setSelectedAnio] = useState<number | null>(null);
   const [selectedMes, setSelectedMes] = useState<number | null>(null);
   const [periodsLoaded, setPeriodsLoaded] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadPeriods() {
@@ -282,7 +284,8 @@ export default function DashboardPage() {
               {recientes.map((mov, i) => (
                 <tr
                   key={mov.id}
-                  className={`border-t border-border hover:bg-muted/50 transition-colors ${i % 2 === 1 ? "bg-background" : ""}`}
+                  className={`border-t border-border hover:bg-muted/50 transition-colors cursor-pointer ${i % 2 === 1 ? "bg-background" : ""}`}
+                  onClick={() => setDetailId(mov.id)}
                 >
                   <td className="px-4 py-2 text-muted-foreground font-money text-xs">
                     {new Date(mov.fecha).toLocaleDateString("es-MX")}
@@ -307,6 +310,12 @@ export default function DashboardPage() {
           </table>
         </div>
       </Card>
+
+      <MovimientoDetailSheet
+        movimientoId={detailId}
+        open={!!detailId}
+        onClose={() => setDetailId(null)}
+      />
     </div>
   );
 }

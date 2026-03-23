@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { MovimientoDetailSheet } from "@/components/movimientos/MovimientoDetailSheet";
 import { useAppStore } from "@/store/app.store";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMonto, formatMontoAbreviado } from "@/components/shared/MontoDisplay";
@@ -98,7 +99,7 @@ function AlertCard({ level, title, description }: { level: "critical" | "warning
 }
 
 // ── Drill-down Panel ────────────────────────────────────────
-function DrillPanel({ items, title, onClose }: { items: DrillItem[]; title: string; onClose: () => void }) {
+function DrillPanel({ items, title, onClose, onItemClick }: { items: DrillItem[]; title: string; onClose: () => void; onItemClick: (id: string) => void }) {
   return (
     <Card className="border-border mt-2 overflow-hidden animate-in slide-in-from-top-2" style={{ background: "hsl(var(--bg-card))" }}>
       <div className="flex items-center justify-between px-4 py-2 border-b border-border" style={{ background: "hsl(var(--bg-surface))" }}>
@@ -116,7 +117,7 @@ function DrillPanel({ items, title, onClose }: { items: DrillItem[]; title: stri
           </thead>
           <tbody>
             {items.slice(0, 50).map(item => (
-              <tr key={item.id} className="border-b border-border/50 hover:bg-card/80">
+              <tr key={item.id} className="border-b border-border/50 hover:bg-card/80 cursor-pointer" onClick={() => onItemClick(item.id)}>
                 <td className="px-3 py-1.5">{new Date(item.fecha).toLocaleDateString("es-MX")}</td>
                 <td className="px-3 py-1.5">{item.empresa}</td>
                 <td className="px-3 py-1.5 max-w-[200px] truncate">{item.concepto}</td>
@@ -144,6 +145,7 @@ export default function ReportesPage() {
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
   const [drillItems, setDrillItems] = useState<DrillItem[]>([]);
   const [drillTitle, setDrillTitle] = useState("");
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const empresa = empresaActiva === "TODAS" ? null : empresaActiva;
 
@@ -520,8 +522,14 @@ export default function ReportesPage() {
 
       {/* Drill-down panel */}
       {drillItems.length > 0 && (
-        <DrillPanel items={drillItems} title={drillTitle} onClose={() => { setExpandedMonth(null); setDrillItems([]); }} />
+        <DrillPanel items={drillItems} title={drillTitle} onClose={() => { setExpandedMonth(null); setDrillItems([]); }} onItemClick={(id) => setDetailId(id)} />
       )}
+
+      <MovimientoDetailSheet
+        movimientoId={detailId}
+        open={!!detailId}
+        onClose={() => setDetailId(null)}
+      />
     </div>
   );
 }

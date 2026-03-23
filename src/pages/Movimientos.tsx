@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, ChevronLeft, ChevronRight, Upload } from "lucide-react";
 import { ModalExcelUpload } from "@/components/movimientos/ModalExcelUpload";
+import { MovimientoDetailSheet } from "@/components/movimientos/MovimientoDetailSheet";
 
 const TIPOS = ["INGRESO", "SALIDA", "INTERNO", "PRESTAMO"];
 const PAGE_SIZE = 50;
@@ -36,6 +37,7 @@ export default function MovimientosPage() {
   const [loading, setLoading] = useState(true);
   const [tipoFilter, setTipoFilter] = useState("all");
   const [excelOpen, setExcelOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,8 +120,9 @@ export default function MovimientosPage() {
                 {movs.map((m, i) => (
                   <tr
                     key={m.id}
-                    className="border-t border-border hover:bg-[hsl(var(--bg-card-hover))] transition-colors"
+                    className="border-t border-border hover:bg-[hsl(var(--bg-card-hover))] transition-colors cursor-pointer"
                     style={{ background: i % 2 === 0 ? undefined : "hsl(var(--bg-base))" }}
+                    onClick={() => setDetailId(m.id)}
                   >
                     <td className="px-4 py-2 font-money text-xs text-muted-foreground">{new Date(m.fecha).toLocaleDateString("es-MX")}</td>
                     <td className="px-4 py-2 text-xs">{m.empresa}</td>
@@ -153,7 +156,13 @@ export default function MovimientosPage() {
           </div>
         </div>
       </Card>
+
       <ModalExcelUpload open={excelOpen} onClose={() => setExcelOpen(false)} onDone={load} />
+      <MovimientoDetailSheet
+        movimientoId={detailId}
+        open={!!detailId}
+        onClose={() => setDetailId(null)}
+      />
     </div>
   );
 }
