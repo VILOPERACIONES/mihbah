@@ -3,17 +3,22 @@ import { Topbar } from "./Topbar";
 import { AppSidebar } from "./Sidebar";
 import { ChatPanel } from "./ChatPanel";
 import { useAppStore } from "@/store/app.store";
+import { cn } from "@/lib/utils";
 
 export function AppShell() {
-  const { sidebarOpen, setSidebarOpen, chatOpen, setChatOpen } = useAppStore();
+  const { sidebarOpen, setSidebarOpen, sidebarCollapsed, chatOpen, setChatOpen } = useAppStore();
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-      <Topbar />
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Sidebar — desktop: fixed, mobile: overlay */}
-        <aside className="hidden lg:flex w-[var(--sidebar-width)] h-full flex-col border-r border-border shrink-0 bg-[hsl(var(--bg-surface))]">
-          <AppSidebar onClose={() => setSidebarOpen(false)} />
+        {/* Desktop sidebar */}
+        <aside
+          className={cn(
+            "hidden lg:flex h-full flex-col border-r border-border shrink-0 bg-[hsl(var(--bg-surface))] transition-all duration-200",
+            sidebarCollapsed ? "w-[60px]" : "w-[var(--sidebar-width)]"
+          )}
+        >
+          <AppSidebar collapsed={sidebarCollapsed} />
         </aside>
 
         {/* Mobile sidebar overlay */}
@@ -26,12 +31,15 @@ export function AppShell() {
           </>
         )}
 
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
-          <Outlet />
-        </main>
+        {/* Main area: topbar + content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Topbar />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
+            <Outlet />
+          </main>
+        </div>
 
-        {/* Chat panel — desktop: fixed, mobile: overlay */}
+        {/* Desktop chat panel */}
         <aside className="hidden xl:flex w-[var(--chat-width)] h-full flex-col border-l border-border shrink-0 bg-[hsl(var(--bg-surface))]">
           <ChatPanel />
         </aside>
