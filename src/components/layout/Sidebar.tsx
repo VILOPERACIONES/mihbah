@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Settings,
 } from "lucide-react";
+import logoJade from "@/assets/logo-jade.png";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -34,7 +35,13 @@ export function AppSidebar() {
       className="w-[var(--sidebar-width)] h-full flex flex-col border-r border-border"
       style={{ background: "hsl(var(--bg-surface))" }}
     >
-      <nav className="flex-1 py-4 px-3 space-y-1">
+      {/* Logo header */}
+      <div className="px-4 py-4 flex items-center gap-2.5">
+        <img src={logoJade} alt="Jade" className="h-7 w-7 rounded-md object-contain" />
+        <span className="font-semibold text-sm text-foreground tracking-tight">Jade</span>
+      </div>
+
+      <nav className="flex-1 py-2 px-3 space-y-1">
         {NAV_ITEMS.map((item) => {
           const active = location.pathname === item.to;
           return (

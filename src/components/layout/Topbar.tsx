@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import logoJade from "@/assets/logo-jade.png";
 
 const ALL_EMPRESAS: EmpresaFiltro[] = ["TODAS", "BM CORP", "MIHBAH", "YCDI"];
 
@@ -20,11 +21,9 @@ export function Topbar() {
       className="h-[var(--topbar-height)] flex items-center px-4 gap-4 border-b border-border"
       style={{ background: "hsl(var(--bg-surface))" }}
     >
-      <div className="flex items-center gap-2">
-        <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
-          <span className="text-xs font-bold text-primary-foreground">SF</span>
-        </div>
-        <span className="font-semibold text-sm text-foreground">SIG Financiero</span>
+      <div className="flex items-center gap-2.5">
+        <img src={logoJade} alt="Jade" className="h-8 w-8 rounded-lg object-contain" />
+        <span className="font-semibold text-sm text-foreground tracking-tight">Jade</span>
       </div>
 
       <div className="w-px h-6 bg-border" />

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, Mail } from "lucide-react";
+import logoJade from "@/assets/logo-jade.png";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -34,11 +35,9 @@ export default function LoginPage() {
         style={{ background: "hsl(var(--bg-card))" }}
       >
         <div className="text-center mb-8">
-          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
-            <span className="text-lg font-bold text-primary-foreground">SF</span>
-          </div>
-          <h1 className="text-xl font-semibold text-foreground">SIG Financiero</h1>
-          <p className="text-sm text-muted-foreground mt-1">Sistema de Gestión Financiera</p>
+          <img src={logoJade} alt="Jade" className="h-16 w-16 rounded-xl mx-auto mb-4 object-contain" />
+          <h1 className="text-xl font-semibold text-foreground">Jade</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gestión Financiera Inteligente</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
