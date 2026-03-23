@@ -57,7 +57,6 @@ export default function DashboardPage() {
   const [selectedMes, setSelectedMes] = useState<number | null>(null);
   const [periodsLoaded, setPeriodsLoaded] = useState(false);
 
-  // Load available periods on mount
   useEffect(() => {
     async function loadPeriods() {
       const [periodsRes, latestRes] = await Promise.all([
@@ -74,12 +73,12 @@ export default function DashboardPage() {
     loadPeriods();
   }, []);
 
-  const availableYears = useMemo(() => 
+  const availableYears = useMemo(() =>
     [...new Set(availablePeriods.map(p => p.anio))].sort((a, b) => b - a),
     [availablePeriods]
   );
 
-  const availableMonths = useMemo(() => 
+  const availableMonths = useMemo(() =>
     availablePeriods.filter(p => p.anio === selectedAnio).map(p => p.mes).sort((a, b) => a - b),
     [availablePeriods, selectedAnio]
   );
@@ -93,10 +92,6 @@ export default function DashboardPage() {
       const mes = selectedMes!;
 
       setPeriodoLabel(`${MESES[mes]} ${anio}`);
-
-      // 2. Get KPIs for latest month + previous month (parallel)
-      const mesAnterior = mes === 1 ? 12 : mes - 1;
-      const anioAnterior = mes === 1 ? anio - 1 : anio;
 
       const [kpiRes, flujoRes, catRes, recRes] = await Promise.all([
         supabase.rpc("get_kpis_mes", { _anio: anio, _mes: mes, _empresa: empresaFilter }),
@@ -114,7 +109,6 @@ export default function DashboardPage() {
         })(),
       ]);
 
-      // Process KPIs
       if (kpiRes.data) {
         const d = kpiRes.data as any;
         const ingresos = Number(d.ingresos) || 0;
@@ -128,33 +122,22 @@ export default function DashboardPage() {
         });
       }
 
-      // Process flujo
       if (flujoRes.data && Array.isArray(flujoRes.data)) {
         let balance = 0;
-        const flujoArr = (flujoRes.data as any[])
-          .slice(-12)
-          .map((row) => {
-            const ing = Number(row.ingresos) || 0;
-            const sal = Number(row.salidas) || 0;
-            balance += ing - sal;
-            return { periodo: row.periodo, ingresos: ing, salidas: sal, balance };
-          });
+        const flujoArr = (flujoRes.data as any[]).slice(-12).map((row) => {
+          const ing = Number(row.ingresos) || 0;
+          const sal = Number(row.salidas) || 0;
+          balance += ing - sal;
+          return { periodo: row.periodo, ingresos: ing, salidas: sal, balance };
+        });
         setFlujo(flujoArr);
       }
 
-      // Process categories
       if (catRes.data && Array.isArray(catRes.data)) {
-        setTopCats(
-          (catRes.data as any[]).map((r) => ({
-            categoria: r.categoria,
-            total: Number(r.total) || 0,
-          }))
-        );
+        setTopCats((catRes.data as any[]).map((r) => ({ categoria: r.categoria, total: Number(r.total) || 0 })));
       }
 
-      // Recent movements
       if (recRes.data) setRecientes(recRes.data as Movimiento[]);
-
       setLoading(false);
     }
     load();
@@ -173,10 +156,10 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Skeleton className="h-72 rounded-xl" />
           <Skeleton className="h-72 rounded-xl" />
         </div>
@@ -186,9 +169,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
+          <h1 className="text-lg md:text-xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             {empresaActiva === "TODAS" ? "Vista consolidada" : empresaActiva} · {periodoLabel}
           </p>
@@ -196,7 +179,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <Select value={String(selectedMes)} onValueChange={(v) => setSelectedMes(Number(v))}>
-            <SelectTrigger className="w-[130px] h-8 text-xs">
+            <SelectTrigger className="w-[120px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -219,19 +202,15 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {kpiCards.map((kpi) => (
-          <Card
-            key={kpi.label}
-            className="p-4 border-border rounded-xl transition-colors hover:bg-card/80"
-            style={{ background: "hsl(var(--bg-card))" }}
-          >
+          <Card key={kpi.label} className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
             <div className="flex items-center gap-2 mb-3">
               <kpi.icon className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
             </div>
             {"isPercent" in kpi && kpi.isPercent ? (
-              <span className={`font-money text-2xl font-semibold ${kpi.value >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              <span className={`font-money text-xl md:text-2xl font-semibold ${kpi.value >= 0 ? "text-primary" : "text-negative"}`}>
                 {kpi.value >= 0 ? "+" : ""}{kpi.value}%
               </span>
             ) : (
@@ -243,44 +222,44 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="p-4 border-border rounded-xl" style={{ background: "hsl(var(--bg-card))" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="p-4 border-border rounded-xl bg-card">
           <h3 className="text-sm font-medium text-foreground mb-4">Flujo Mensual</h3>
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={flujo}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--bg-border))" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(155, 22%, 16%)" />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
+              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
               <Tooltip
-                contentStyle={{ background: "hsl(var(--bg-card))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: "hsl(155, 28%, 10%)", border: "1px solid hsl(155, 22%, 16%)", borderRadius: 8, fontSize: 12 }}
                 formatter={(v: number, name: string) => [formatMonto(v, true), name === "ingresos" ? "Ingresos" : name === "salidas" ? "Egresos" : "Balance"]}
               />
-              <Area type="monotone" dataKey="ingresos" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="salidas" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="balance" stroke="#6366f1" fill="none" strokeWidth={2} strokeDasharray="4 2" />
+              <Area type="monotone" dataKey="ingresos" stroke="#00C896" fill="#00C896" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="salidas" stroke="#E05C5C" fill="#E05C5C" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="balance" stroke="#8A9FFF" fill="none" strokeWidth={2} strokeDasharray="4 2" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-4 border-border rounded-xl" style={{ background: "hsl(var(--bg-card))" }}>
+        <Card className="p-4 border-border rounded-xl bg-card">
           <h3 className="text-sm font-medium text-foreground mb-4">Top Egresos por Categoría</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={topCats} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--bg-border))" />
-              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(155, 22%, 16%)" />
+              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
+              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
               <Tooltip
-                contentStyle={{ background: "hsl(var(--bg-card))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: "hsl(155, 28%, 10%)", border: "1px solid hsl(155, 22%, 16%)", borderRadius: 8, fontSize: 12 }}
                 formatter={(v: number) => [formatMonto(v, true), "Total"]}
               />
-              <Bar dataKey="total" fill="#f43f5e" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total" fill="#E05C5C" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
       </div>
 
       {/* Recent Movements */}
-      <Card className="border-border rounded-xl overflow-hidden" style={{ background: "hsl(var(--bg-card))" }}>
+      <Card className="border-border rounded-xl overflow-hidden bg-card">
         <div className="p-4 border-b border-border">
           <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
             <ArrowUpDown className="h-4 w-4" />
@@ -288,9 +267,9 @@ export default function DashboardPage() {
           </h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
-              <tr style={{ background: "hsl(var(--bg-surface))" }}>
+              <tr className="bg-muted">
                 <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Fecha</th>
                 <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Empresa</th>
                 <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Tipo</th>
@@ -303,8 +282,7 @@ export default function DashboardPage() {
               {recientes.map((mov, i) => (
                 <tr
                   key={mov.id}
-                  className="border-t border-border hover:bg-[hsl(var(--bg-card-hover))] transition-colors"
-                  style={{ background: i % 2 === 0 ? "hsl(var(--bg-card))" : "hsl(var(--bg-base))" }}
+                  className={`border-t border-border hover:bg-muted/50 transition-colors ${i % 2 === 1 ? "bg-background" : ""}`}
                 >
                   <td className="px-4 py-2 text-muted-foreground font-money text-xs">
                     {new Date(mov.fecha).toLocaleDateString("es-MX")}
