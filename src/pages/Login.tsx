@@ -29,11 +29,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(var(--bg-base))" }}>
-      <div
-        className="w-full max-w-sm rounded-2xl p-8 border border-border"
-        style={{ background: "hsl(var(--bg-card))" }}
-      >
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <div className="w-full max-w-sm rounded-2xl p-8 border border-border bg-card">
         <div className="text-center mb-8">
           <img src={logoJade} alt="Jade" className="h-16 w-16 rounded-xl mx-auto mb-4 object-contain" />
           <h1 className="text-xl font-semibold text-foreground">Jade</h1>
@@ -53,7 +50,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@grupo.mx"
-                className="pl-10 bg-background border-border"
+                className="pl-10"
                 required
               />
             </div>
@@ -71,7 +68,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-10 bg-background border-border"
+                className="pl-10"
                 required
               />
             </div>
