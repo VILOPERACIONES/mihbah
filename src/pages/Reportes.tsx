@@ -295,8 +295,8 @@ export default function ReportesPage() {
               {["2023","2024","2025","2026"].map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportCSV}>
-            <Download className="h-3.5 w-3.5" /> Exportar
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportPDF}>
+            <Download className="h-3.5 w-3.5" /> Exportar PDF
           </Button>
         </div>
       </div>
