@@ -252,7 +252,7 @@ export default function DashboardPage() {
                 contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number) => [formatMonto(v, true), "Total"]}
               />
-              <Bar dataKey="total" fill="#E05C5C" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total" fill="#EF4444" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
