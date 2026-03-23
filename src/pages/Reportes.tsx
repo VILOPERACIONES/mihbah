@@ -99,7 +99,7 @@ function AlertCard({ level, title, description }: { level: "critical" | "warning
 }
 
 // ── Drill-down Panel ────────────────────────────────────────
-function DrillPanel({ items, title, onClose }: { items: DrillItem[]; title: string; onClose: () => void }) {
+function DrillPanel({ items, title, onClose, onItemClick }: { items: DrillItem[]; title: string; onClose: () => void; onItemClick: (id: string) => void }) {
   return (
     <Card className="border-border mt-2 overflow-hidden animate-in slide-in-from-top-2" style={{ background: "hsl(var(--bg-card))" }}>
       <div className="flex items-center justify-between px-4 py-2 border-b border-border" style={{ background: "hsl(var(--bg-surface))" }}>
