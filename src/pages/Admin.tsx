@@ -402,9 +402,15 @@ function LLMTab() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Configura las conexiones a proveedores de IA. Las API keys se almacenan localmente.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Configura las conexiones a proveedores de IA. Los cambios se guardan automáticamente al editar.
+        </p>
+        <Badge variant="outline" className="text-xs gap-1.5 text-jade border-jade/30 bg-jade/10">
+          <span className="h-1.5 w-1.5 rounded-full bg-jade animate-pulse" />
+          Autoguardado activo
+        </Badge>
+      </div>
 
       <div className="grid gap-4">
         {providers.map((prov) => (
