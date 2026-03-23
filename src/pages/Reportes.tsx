@@ -244,7 +244,7 @@ export default function ReportesPage() {
       .eq("activo", true).eq("anio", Number(anio)).eq("mes", mes)
       .order("monto", { ascending: true });
     if (empresa) query = query.eq("empresa", empresa);
-    if (tipo) query = query.eq("tipo", tipo);
+    if (tipo) query = query.eq("tipo", tipo as any);
     const { data } = await query.limit(100);
     setDrillItems((data as DrillItem[]) ?? []);
     setDrillTitle(`${MESES_FULL[mes - 1]} ${anio}${tipo ? ` — ${tipo}` : ""}`);
