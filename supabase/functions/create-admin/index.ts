@@ -45,14 +45,19 @@ serve(async (req) => {
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.4");
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    await supabase.from('profiles').update({
+    // Insert profile (upsert in case trigger created it)
+    await supabase.from('profiles').upsert({
+      user_id: userId,
       nombre: nombre || email,
       empresas: empresas || ['*'],
-    }).eq('user_id', userId);
+    }, { onConflict: 'user_id' });
 
-    await supabase.from('user_roles').update({
+    // Delete any default role created by trigger, then insert the correct one
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    await supabase.from('user_roles').insert({
+      user_id: userId,
       role: rol || 'VIEWER',
-    }).eq('user_id', userId);
+    });
 
     return new Response(JSON.stringify({ success: true, userId }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
