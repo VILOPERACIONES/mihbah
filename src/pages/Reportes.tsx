@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/app.store";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMonto, formatMontoAbreviado } from "@/components/shared/MontoDisplay";
+import { generateReportPDF } from "@/lib/generateReportPDF";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -250,19 +251,19 @@ export default function ReportesPage() {
     setDrillTitle(`${MESES_FULL[mes - 1]} ${anio}${tipo ? ` — ${tipo}` : ""}`);
   }, [expandedMonth, anio, empresa]);
 
-  // Export to CSV
-  const exportCSV = useCallback(() => {
-    const header = "Mes,Ingresos,Egresos,Resultado,Margen %\n";
-    const body = rows.map(r => `${MESES_FULL[r.mes - 1]},${r.ingresos},${r.egresos},${r.resultado},${r.margen.toFixed(1)}`).join("\n");
-    const total = `\nTOTAL,${totals.ingresos},${totals.egresos},${totals.resultado},${totals.margen.toFixed(1)}`;
-    const blob = new Blob([header + body + total], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `estado_resultados_${anio}_${empresaActiva}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [rows, totals, anio, empresaActiva]);
+  // Export to PDF
+  const exportPDF = useCallback(() => {
+    generateReportPDF({
+      anio,
+      empresa: empresaActiva,
+      rows,
+      prevRows,
+      categories,
+      alerts,
+      totals,
+      prevTotals,
+    });
+  }, [rows, prevRows, categories, alerts, totals, prevTotals, anio, empresaActiva]);
 
   const PIE_COLORS = ["hsl(142,71%,45%)", "hsl(142,71%,35%)", "hsl(142,71%,55%)", "hsl(45,80%,50%)", "hsl(0,80%,60%)", "hsl(210,50%,60%)", "hsl(180,50%,50%)", "hsl(270,40%,55%)"];
 
@@ -294,8 +295,8 @@ export default function ReportesPage() {
               {["2023","2024","2025","2026"].map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportCSV}>
-            <Download className="h-3.5 w-3.5" /> Exportar
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportPDF}>
+            <Download className="h-3.5 w-3.5" /> Exportar PDF
           </Button>
         </div>
       </div>
