@@ -117,9 +117,9 @@ export function ChatPanel() {
     >
       {/* Header */}
       <div className="h-[var(--topbar-height)] flex items-center px-4 gap-2 border-b border-border shrink-0">
-        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-        <Bot className="h-4 w-4 text-primary" />
-        <span className="font-semibold text-sm">Jade AI</span>
+        <div className="h-2 w-2 rounded-full bg-jade animate-pulse" />
+        <Bot className="h-4 w-4 text-jade" />
+        <span className="font-semibold text-sm text-foreground">Jade AI</span>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded">
           {empresaActiva}

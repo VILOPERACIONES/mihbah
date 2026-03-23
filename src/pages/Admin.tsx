@@ -129,7 +129,7 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 className="text-xl font-semibold">Administración</h1>
-          <p className="text-sm text-muted-foreground">Usuarios, IA y configuración del sistema</p>
+          <p className="text-sm text-muted-foreground">Usuarios, IA y configuración del sistema — Jade</p>
         </div>
       </div>
 
