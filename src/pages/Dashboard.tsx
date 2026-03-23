@@ -227,7 +227,7 @@ export default function DashboardPage() {
           <h3 className="text-sm font-medium text-foreground mb-4">Flujo Mensual</h3>
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={flujo}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(155, 22%, 16%)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
               <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
               <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(160, 25%, 55%)" }} />
               <Tooltip
