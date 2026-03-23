@@ -6,6 +6,10 @@ export type EmpresaFiltro = "TODAS" | "BM CORP" | "MIHBAH" | "YCDI";
 interface AppStore {
   empresaActiva: EmpresaFiltro;
   setEmpresaActiva: (e: EmpresaFiltro) => void;
+  sidebarOpen: boolean;
+  setSidebarOpen: (v: boolean) => void;
+  chatOpen: boolean;
+  setChatOpen: (v: boolean) => void;
   filtroTipo: string[];
   filtroCategoria: string;
   filtroProyecto: string;
@@ -22,6 +26,10 @@ export const useAppStore = create<AppStore>()(
     (set) => ({
       empresaActiva: "TODAS",
       setEmpresaActiva: (e) => set({ empresaActiva: e }),
+      sidebarOpen: false,
+      setSidebarOpen: (v) => set({ sidebarOpen: v }),
+      chatOpen: false,
+      setChatOpen: (v) => set({ chatOpen: v }),
       filtroTipo: [],
       filtroCategoria: "",
       filtroProyecto: "",
@@ -41,6 +49,6 @@ export const useAppStore = create<AppStore>()(
           filtroBusqueda: "",
         }),
     }),
-    { name: "sig-app-state" }
+    { name: "sig-app-state", partialize: (state) => ({ empresaActiva: state.empresaActiva }) }
   )
 );

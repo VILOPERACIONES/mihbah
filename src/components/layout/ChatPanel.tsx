@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAppStore } from "@/store/app.store";
 import { useAuth } from "@/hooks/useAuth";
-import { Send, Bot } from "lucide-react";
+import { Send, Bot, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ const QUICK_QUESTIONS = [
   "Flujo reciente",
 ];
 
-export function ChatPanel() {
+export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const { empresaActiva } = useAppStore();
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -96,7 +96,7 @@ export function ChatPanel() {
           } catch {}
         }
       }
-    } catch (err) {
+    } catch {
       setMessages((prev) => {
         const msgs = [...prev];
         msgs[msgs.length - 1] = {
@@ -111,19 +111,21 @@ export function ChatPanel() {
   }
 
   return (
-    <aside
-      className="w-[var(--chat-width)] h-full flex flex-col border-l border-border"
-      style={{ background: "hsl(var(--bg-surface))" }}
-    >
+    <>
       {/* Header */}
       <div className="h-[var(--topbar-height)] flex items-center px-4 gap-2 border-b border-border shrink-0">
-        <div className="h-2 w-2 rounded-full bg-jade animate-pulse" />
-        <Bot className="h-4 w-4 text-jade" />
+        <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+        <Bot className="h-4 w-4 text-primary" />
         <span className="font-semibold text-sm text-foreground">Jade AI</span>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded">
           {empresaActiva}
         </span>
+        {onClose && (
+          <button onClick={onClose} className="xl:hidden ml-2 text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -184,7 +186,7 @@ export function ChatPanel() {
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -204,6 +206,6 @@ export function ChatPanel() {
           </Button>
         </form>
       </div>
-    </aside>
+    </>
   );
 }

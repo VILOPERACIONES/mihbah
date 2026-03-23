@@ -28,7 +28,7 @@ const SIZES = {
   sm: "text-sm",
   md: "text-base",
   lg: "text-lg",
-  xl: "text-2xl font-semibold",
+  xl: "text-xl md:text-2xl font-semibold",
 };
 
 export function MontoDisplay({ monto, tipo, showSign, className, size = "md" }: MontoDisplayProps) {
@@ -36,10 +36,10 @@ export function MontoDisplay({ monto, tipo, showSign, className, size = "md" }: 
   const isNegative = tipo === "SALIDA" || (!tipo && monto < 0);
 
   const colorClass = isPositive
-    ? "text-emerald-400"
+    ? "text-[#00C896]"
     : isNegative
-    ? "text-rose-400"
-    : "text-slate-300";
+    ? "text-[#E05C5C]"
+    : "text-foreground";
 
   const sign = showSign ? (monto >= 0 ? "+" : "-") : "";
 
