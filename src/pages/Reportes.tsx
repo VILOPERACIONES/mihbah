@@ -522,8 +522,14 @@ export default function ReportesPage() {
 
       {/* Drill-down panel */}
       {drillItems.length > 0 && (
-        <DrillPanel items={drillItems} title={drillTitle} onClose={() => { setExpandedMonth(null); setDrillItems([]); }} />
+        <DrillPanel items={drillItems} title={drillTitle} onClose={() => { setExpandedMonth(null); setDrillItems([]); }} onItemClick={(id) => setDetailId(id)} />
       )}
+
+      <MovimientoDetailSheet
+        movimientoId={detailId}
+        open={!!detailId}
+        onClose={() => setDetailId(null)}
+      />
     </div>
   );
 }
