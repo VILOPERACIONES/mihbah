@@ -12,9 +12,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(supabaseUrl, serviceKey);
@@ -23,6 +20,68 @@ serve(async (req) => {
 
     const empFilter =
       empresaFiltro && empresaFiltro !== "TODAS" ? empresaFiltro : null;
+
+    // ── Load default LLM provider from DB ──
+    const { data: defaultProvider } = await sb
+      .from("llm_providers")
+      .select("*")
+      .eq("is_default", true)
+      .limit(1)
+      .single();
+
+    // Fallback: if no default, try any provider
+    let provider = defaultProvider;
+    if (!provider) {
+      const { data: anyProvider } = await sb
+        .from("llm_providers")
+        .select("*")
+        .limit(1)
+        .single();
+      provider = anyProvider;
+    }
+
+    // Determine API config
+    let apiUrl: string;
+    let apiKey: string;
+    let model: string;
+    let authHeaders: Record<string, string>;
+
+    if (provider && provider.base_url && provider.api_key_encrypted) {
+      // Use configured provider
+      const baseUrl = provider.base_url.replace(/\/+$/, "");
+      apiUrl = `${baseUrl}/chat/completions`;
+      apiKey = provider.api_key_encrypted;
+      model = provider.models?.[0] ?? "claude-sonnet-4-20250514";
+
+      // Detect provider type for correct auth headers
+      const isAnthropic = baseUrl.includes("anthropic");
+      if (isAnthropic) {
+        // Anthropic Messages API
+        apiUrl = `${baseUrl}/messages`;
+        authHeaders = {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        };
+      } else {
+        // OpenAI-compatible
+        authHeaders = {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        };
+      }
+    } else {
+      // Fallback to Lovable AI Gateway
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) throw new Error("No hay proveedor LLM configurado ni LOVABLE_API_KEY disponible");
+      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      apiKey = LOVABLE_API_KEY;
+      model = "google/gemini-2.5-flash";
+      authHeaders = {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+    }
 
     // ── Load skills from DB ──
     const { data: skillsData } = await sb
@@ -33,9 +92,8 @@ serve(async (req) => {
 
     const enabledSkills = skillsData ?? [];
 
-    // Combine all enabled skill prompts
     const skillPrompts = enabledSkills
-      .map((s: any) => s.system_prompt)
+      .map((s: any) => `### Skill: ${s.name}\n${s.system_prompt}`)
       .filter(Boolean)
       .join("\n\n---\n\n");
 
@@ -108,7 +166,7 @@ serve(async (req) => {
     );
     for (const m of largeOnes.slice(0, 3)) {
       alerts.push(
-        `⚠️ Movimiento inusual: ${(m as any).concepto} por $${Math.abs(m.monto).toLocaleString()} en ${(m as any).empresa}`
+        `Movimiento inusual: ${(m as any).concepto} por $${Math.abs(m.monto).toLocaleString()} en ${(m as any).empresa}`
       );
     }
 
@@ -117,14 +175,14 @@ serve(async (req) => {
       const balance = (kpi.ingresos ?? 0) - (kpi.salidas ?? 0);
       if (balance < 0) {
         alerts.push(
-          `🔴 Balance negativo del mes: -$${Math.abs(balance).toLocaleString()}`
+          `Balance negativo del mes: -$${Math.abs(balance).toLocaleString()}`
         );
       }
       if (kpi.salidas > 0 && kpi.ingresos > 0) {
         const ratio = kpi.salidas / kpi.ingresos;
         if (ratio > 0.9) {
           alerts.push(
-            `🟡 Las salidas representan ${(ratio * 100).toFixed(0)}% de los ingresos`
+            `Las salidas representan ${(ratio * 100).toFixed(0)}% de los ingresos`
           );
         }
       }
@@ -140,8 +198,8 @@ serve(async (req) => {
       : `${mesesNombre[currentMonth]} ${currentYear}`;
 
     // ── System prompt with real data + skills ──
-    const basePrompt = `Eres Jade AI, el CFO virtual inteligente de la plataforma financiera Jade.
-Tu tono es directo, ejecutivo, claro y en español mexicano. Usas emojis financieros cuando ayudan.
+    const basePrompt = `Eres Jade AI, el asistente financiero inteligente de la plataforma Jade.
+Tu tono es directo, ejecutivo, claro y en español mexicano.
 Tienes acceso COMPLETO a los datos financieros reales de la empresa.
 
 ## CONTEXTO FINANCIERO ACTUAL (${periodoLabel})
@@ -175,34 +233,54 @@ ${alerts.length > 0 ? alerts.join("\n") : "Sin alertas críticas."}
       ? `${basePrompt}\n\n## SKILLS ACTIVOS:\n${skillPrompts}`
       : basePrompt;
 
-    // ── Build messages ──
-    const aiMessages: { role: string; content: string }[] = [
-      { role: "system", content: fullSystemPrompt },
-    ];
+    // ── Build messages array ──
+    const messagesArr: { role: string; content: string }[] = [];
 
     if (history && Array.isArray(history)) {
       for (const msg of history) {
-        aiMessages.push({ role: msg.role, content: msg.content });
+        messagesArr.push({ role: msg.role, content: msg.content });
       }
     }
-    aiMessages.push({ role: "user", content: mensaje });
+    messagesArr.push({ role: "user", content: mensaje });
 
-    // ── Call Lovable AI Gateway ──
-    const aiResponse = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
+    // ── Detect if Anthropic ──
+    const isAnthropic = apiUrl.includes("anthropic") || apiUrl.includes("/messages");
+
+    let aiResponse: Response;
+
+    if (isAnthropic) {
+      // Anthropic Messages API format
+      aiResponse = await fetch(apiUrl, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: authHeaders,
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model,
+          max_tokens: 4096,
+          system: fullSystemPrompt,
+          messages: messagesArr.map((m) => ({
+            role: m.role === "system" ? "user" : m.role,
+            content: m.content,
+          })),
+          stream: true,
+        }),
+      });
+    } else {
+      // OpenAI-compatible format
+      const aiMessages = [
+        { role: "system", content: fullSystemPrompt },
+        ...messagesArr,
+      ];
+
+      aiResponse = await fetch(apiUrl, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          model,
           messages: aiMessages,
           stream: true,
         }),
-      }
-    );
+      });
+    }
 
     if (!aiResponse.ok) {
       const status = aiResponse.status;
@@ -219,10 +297,76 @@ ${alerts.length > 0 ? alerts.join("\n") : "Sin alertas críticas."}
         );
       }
       const errText = await aiResponse.text();
-      console.error("AI gateway error:", status, errText);
-      throw new Error(`AI gateway error: ${status}`);
+      console.error("AI provider error:", status, errText);
+      return new Response(
+        JSON.stringify({ error: `Error del proveedor de IA (${status}): ${errText.slice(0, 200)}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
+    // For Anthropic, we need to transform the SSE stream to OpenAI format
+    if (isAnthropic) {
+      const reader = aiResponse.body!.getReader();
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          let buffer = "";
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+
+              let newlineIndex: number;
+              while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+                let line = buffer.slice(0, newlineIndex);
+                buffer = buffer.slice(newlineIndex + 1);
+                if (line.endsWith("\r")) line = line.slice(0, -1);
+                if (!line.startsWith("data: ")) continue;
+
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr === "[DONE]") {
+                  controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                  continue;
+                }
+
+                try {
+                  const event = JSON.parse(jsonStr);
+
+                  // Anthropic content_block_delta → OpenAI delta format
+                  if (event.type === "content_block_delta" && event.delta?.text) {
+                    const openaiChunk = {
+                      choices: [{ delta: { content: event.delta.text } }],
+                    };
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`)
+                    );
+                  } else if (event.type === "message_stop") {
+                    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                  }
+                } catch {}
+              }
+            }
+          } catch (err) {
+            console.error("Stream transform error:", err);
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+        },
+      });
+    }
+
+    // OpenAI-compatible: pass through directly
     return new Response(aiResponse.body, {
       headers: {
         ...corsHeaders,
