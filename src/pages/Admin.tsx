@@ -474,6 +474,8 @@ function LLMTab() {
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [newModel, setNewModel] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [fetchingModels, setFetchingModels] = useState<Record<string, boolean>>({});
+  const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
 
   const fetchProviders = useCallback(async () => {
     setLoading(true);
