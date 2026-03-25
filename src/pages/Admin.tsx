@@ -784,32 +784,49 @@ function SkillsTab() {
   async function toggleSkill(id: string) {
     const skill = skills.find((s) => s.id === id);
     if (!skill) return;
-    await supabase.from("agent_skills").update({ enabled: !skill.enabled } as any).eq("id", id);
-    fetchData();
+    // Optimistic update
+    setSkills((prev) => prev.map((s) => s.id === id ? { ...s, enabled: !s.enabled } : s));
+    const { error } = await supabase.from("agent_skills").update({ enabled: !skill.enabled } as any).eq("id", id);
+    if (error) {
+      // Revert on error
+      setSkills((prev) => prev.map((s) => s.id === id ? { ...s, enabled: skill.enabled } : s));
+      toast.error("Error al actualizar skill");
+    }
   }
 
   async function deleteSkill(id: string) {
-    await supabase.from("agent_skills").delete().eq("id", id);
+    const prev = [...skills];
+    setSkills((s) => s.filter((sk) => sk.id !== id));
     if (editingId === id) setEditingId(null);
-    fetchData();
-    toast.success("Skill eliminado");
+    const { error } = await supabase.from("agent_skills").delete().eq("id", id);
+    if (error) {
+      setSkills(prev);
+      toast.error("Error al eliminar");
+    } else {
+      toast.success("Skill eliminado");
+    }
   }
 
   async function saveSkill(id: string, patch: Partial<AgentSkill>) {
-    await supabase.from("agent_skills").update(patch as any).eq("id", id);
+    setSkills((prev) => prev.map((s) => s.id === id ? { ...s, ...patch } : s));
     setEditingId(null);
-    fetchData();
-    toast.success("Skill guardado");
+    const { error } = await supabase.from("agent_skills").update(patch as any).eq("id", id);
+    if (error) {
+      toast.error("Error al guardar");
+      fetchData();
+    } else {
+      toast.success("Skill guardado");
+    }
   }
 
   async function createSkill(skill: Omit<AgentSkill, "id">) {
-    const { error } = await supabase.from("agent_skills").insert(skill as any);
+    const { data, error } = await supabase.from("agent_skills").insert(skill as any).select().single();
     if (error) {
       toast.error("Error: " + error.message);
     } else {
+      setSkills((prev) => [...prev, data as unknown as AgentSkill]);
       toast.success("Skill creado");
       setShowCreate(false);
-      fetchData();
     }
   }
 
