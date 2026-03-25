@@ -2,7 +2,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore } from "@/store/app.store";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Bot, X, Paperclip, FileSpreadsheet, Table2, BarChart3, Trash2 } from "lucide-react";
+import {
+  Send, Bot, X, Paperclip, FileSpreadsheet, Table2, BarChart3,
+  Trash2, Plus, MessageSquare, ChevronLeft, Clock
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -14,7 +17,7 @@ interface ExcelData {
   fileName: string;
   headers: string[];
   rows: Record<string, unknown>[];
-  summary: string; // text summary for AI context
+  summary: string;
 }
 
 interface ChatMessage {
@@ -25,11 +28,19 @@ interface ChatMessage {
   showChart?: boolean;
 }
 
+interface ConversationRow {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  empresa: string | null;
+  mensajes: any;
+}
+
 const QUICK_QUESTIONS = [
-  "¿Cómo estamos este mes?",
+  "Como estamos este mes?",
   "Top egresos y alertas",
   "Comparar ingresos vs salidas",
-  "¿Cuáles son las alertas principales?",
+  "Cuales son las alertas principales?",
   "Resumen ejecutivo del periodo",
 ];
 
@@ -45,42 +56,29 @@ function parseExcelFile(file: File): Promise<ExcelData> {
         const sheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
 
-        if (json.length === 0) {
-          reject(new Error("El archivo Excel está vacío"));
-          return;
-        }
+        if (json.length === 0) { reject(new Error("El archivo Excel esta vacio")); return; }
 
         const headers = Object.keys(json[0]);
-        const rows = json.slice(0, 500); // limit to 500 rows for display
+        const rows = json.slice(0, 500);
 
-        // Build summary for AI
         const numericCols = headers.filter((h) =>
           rows.some((r) => typeof r[h] === "number" && !isNaN(r[h] as number))
         );
 
-        let summary = `Archivo: ${file.name}\n`;
-        summary += `Filas: ${json.length} | Columnas: ${headers.length}\n`;
-        summary += `Columnas: ${headers.join(", ")}\n\n`;
+        let summary = `Archivo: ${file.name}\nFilas: ${json.length} | Columnas: ${headers.length}\nColumnas: ${headers.join(", ")}\n\n`;
 
         if (numericCols.length > 0) {
-          summary += "Resumen numérico:\n";
+          summary += "Resumen numerico:\n";
           for (const col of numericCols.slice(0, 10)) {
-            const values = json
-              .map((r) => Number(r[col]))
-              .filter((v) => !isNaN(v));
+            const values = json.map((r) => Number(r[col])).filter((v) => !isNaN(v));
             if (values.length === 0) continue;
             const sum = values.reduce((a, b) => a + b, 0);
             const avg = sum / values.length;
-            const min = Math.min(...values);
-            const max = Math.max(...values);
-            summary += `  ${col}: Total=${sum.toLocaleString()}, Promedio=${avg.toLocaleString(undefined, { maximumFractionDigits: 2 })}, Min=${min.toLocaleString()}, Max=${max.toLocaleString()}\n`;
+            summary += `  ${col}: Total=${sum.toLocaleString()}, Promedio=${avg.toLocaleString(undefined, { maximumFractionDigits: 2 })}, Min=${Math.min(...values).toLocaleString()}, Max=${Math.max(...values).toLocaleString()}\n`;
           }
         }
 
-        // Sample first 5 rows
-        summary += "\nPrimeras 5 filas:\n";
-        summary += JSON.stringify(json.slice(0, 5), null, 2);
-
+        summary += "\nPrimeras 5 filas:\n" + JSON.stringify(json.slice(0, 5), null, 2);
         resolve({ fileName: file.name, headers, rows, summary });
       } catch {
         reject(new Error("No se pudo leer el archivo Excel"));
@@ -110,14 +108,10 @@ function DataTable({ data }: { data: ExcelData }) {
           <thead>
             <tr className="bg-card/50">
               {data.headers.slice(0, 8).map((h) => (
-                <th key={h} className="text-left px-2 py-1.5 font-medium text-muted-foreground whitespace-nowrap border-b border-border">
-                  {h}
-                </th>
+                <th key={h} className="text-left px-2 py-1.5 font-medium text-muted-foreground whitespace-nowrap border-b border-border">{h}</th>
               ))}
               {data.headers.length > 8 && (
-                <th className="text-left px-2 py-1.5 font-medium text-muted-foreground border-b border-border">
-                  +{data.headers.length - 8} más
-                </th>
+                <th className="text-left px-2 py-1.5 font-medium text-muted-foreground border-b border-border">+{data.headers.length - 8} mas</th>
               )}
             </tr>
           </thead>
@@ -125,11 +119,9 @@ function DataTable({ data }: { data: ExcelData }) {
             {pageRows.map((row, i) => (
               <tr key={i} className="border-b border-border/50 hover:bg-card/30">
                 {data.headers.slice(0, 8).map((h) => (
-                  <td key={h} className="px-2 py-1 whitespace-nowrap max-w-[150px] truncate">
-                    {String(row[h] ?? "")}
-                  </td>
+                  <td key={h} className="px-2 py-1 whitespace-nowrap max-w-[150px] truncate">{String(row[h] ?? "")}</td>
                 ))}
-                {data.headers.length > 8 && <td className="px-2 py-1 text-muted-foreground">…</td>}
+                {data.headers.length > 8 && <td className="px-2 py-1 text-muted-foreground">...</td>}
               </tr>
             ))}
           </tbody>
@@ -137,13 +129,9 @@ function DataTable({ data }: { data: ExcelData }) {
       </div>
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-3 py-1.5 bg-card border-t border-border">
-          <Button variant="ghost" size="sm" className="h-6 text-xs" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            ← Anterior
-          </Button>
+          <Button variant="ghost" size="sm" className="h-6 text-xs" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</Button>
           <span className="text-xs text-muted-foreground">{page + 1} / {totalPages}</span>
-          <Button variant="ghost" size="sm" className="h-6 text-xs" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
-            Siguiente →
-          </Button>
+          <Button variant="ghost" size="sm" className="h-6 text-xs" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Siguiente</Button>
         </div>
       )}
     </div>
@@ -152,7 +140,6 @@ function DataTable({ data }: { data: ExcelData }) {
 
 // ── Inline Chart ──
 function DataChart({ data }: { data: ExcelData }) {
-  // Find first string col and first numeric col for auto chart
   const stringCol = data.headers.find((h) =>
     data.rows.some((r) => typeof r[h] === "string" && (r[h] as string).length > 0)
   );
@@ -161,14 +148,9 @@ function DataChart({ data }: { data: ExcelData }) {
   );
 
   if (!stringCol || numericCols.length === 0) {
-    return (
-      <div className="mt-2 p-3 rounded-lg border border-border bg-card text-xs text-muted-foreground text-center">
-        No se encontraron datos numéricos para graficar
-      </div>
-    );
+    return <div className="mt-2 p-3 rounded-lg border border-border bg-card text-xs text-muted-foreground text-center">No se encontraron datos numericos para graficar</div>;
   }
 
-  // Aggregate: group by stringCol, sum first numeric col
   const numCol = numericCols[0];
   const grouped = new Map<string, number>();
   for (const row of data.rows) {
@@ -190,16 +172,155 @@ function DataChart({ data }: { data: ExcelData }) {
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 80, right: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
-          <XAxis type="number" tick={{ fill: "#888", fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-          <YAxis type="category" dataKey="name" tick={{ fill: "#888", fontSize: 10 }} width={75} />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+          <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} width={75} />
           <Tooltip
-            contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 11 }}
+            contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
             formatter={(value: number) => [`$${value.toLocaleString()}`, numCol]}
           />
-          <Bar dataKey="value" fill="#22C55E" radius={[0, 4, 4, 0]} />
+          <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
         </BarChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ── Markdown components for rich rendering ──
+const markdownComponents = {
+  table: ({ children, ...props }: any) => (
+    <div className="my-2 overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-xs border-collapse" {...props}>{children}</table>
+    </div>
+  ),
+  thead: ({ children, ...props }: any) => (
+    <thead className="bg-card" {...props}>{children}</thead>
+  ),
+  th: ({ children, ...props }: any) => (
+    <th className="text-left px-3 py-2 font-semibold text-foreground border-b border-border whitespace-nowrap" {...props}>{children}</th>
+  ),
+  td: ({ children, ...props }: any) => (
+    <td className="px-3 py-1.5 border-b border-border/50 text-foreground" {...props}>{children}</td>
+  ),
+  tr: ({ children, ...props }: any) => (
+    <tr className="hover:bg-card/50 transition-colors" {...props}>{children}</tr>
+  ),
+  code: ({ children, className, ...props }: any) => {
+    const isBlock = className?.includes("language-");
+    if (isBlock) {
+      return (
+        <div className="my-2 rounded-lg overflow-hidden border border-border">
+          <div className="bg-card px-3 py-1 text-[10px] text-muted-foreground border-b border-border font-mono">
+            {className?.replace("language-", "") || "code"}
+          </div>
+          <pre className="bg-card/50 p-3 overflow-x-auto">
+            <code className="text-xs font-mono text-foreground" {...props}>{children}</code>
+          </pre>
+        </div>
+      );
+    }
+    return <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>{children}</code>;
+  },
+  pre: ({ children }: any) => <>{children}</>,
+  ul: ({ children, ...props }: any) => (
+    <ul className="my-1.5 ml-4 list-disc space-y-0.5 marker:text-primary/60" {...props}>{children}</ul>
+  ),
+  ol: ({ children, ...props }: any) => (
+    <ol className="my-1.5 ml-4 list-decimal space-y-0.5 marker:text-primary/60" {...props}>{children}</ol>
+  ),
+  li: ({ children, ...props }: any) => (
+    <li className="text-sm leading-relaxed" {...props}>{children}</li>
+  ),
+  h1: ({ children, ...props }: any) => (
+    <h1 className="text-base font-bold mt-3 mb-1.5 text-foreground" {...props}>{children}</h1>
+  ),
+  h2: ({ children, ...props }: any) => (
+    <h2 className="text-sm font-bold mt-2.5 mb-1 text-foreground" {...props}>{children}</h2>
+  ),
+  h3: ({ children, ...props }: any) => (
+    <h3 className="text-sm font-semibold mt-2 mb-1 text-foreground" {...props}>{children}</h3>
+  ),
+  p: ({ children, ...props }: any) => (
+    <p className="my-1 text-sm leading-relaxed" {...props}>{children}</p>
+  ),
+  strong: ({ children, ...props }: any) => (
+    <strong className="font-semibold text-primary" {...props}>{children}</strong>
+  ),
+  blockquote: ({ children, ...props }: any) => (
+    <blockquote className="my-2 border-l-2 border-primary/40 pl-3 text-muted-foreground italic" {...props}>{children}</blockquote>
+  ),
+  hr: () => <hr className="my-3 border-border" />,
+};
+
+// ── Conversation list sidebar ──
+function ConversationList({
+  conversations,
+  activeId,
+  onSelect,
+  onNew,
+  onDelete,
+}: {
+  conversations: ConversationRow[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  onNew: () => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-3 border-b border-border">
+        <Button onClick={onNew} variant="outline" size="sm" className="w-full gap-2 text-xs">
+          <Plus className="h-3.5 w-3.5" />
+          Nueva conversacion
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {conversations.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-6">Sin conversaciones</p>
+        )}
+        {conversations.map((c) => {
+          const msgs = Array.isArray(c.mensajes) ? c.mensajes : [];
+          const firstUser = msgs.find((m: any) => m.role === "user");
+          const preview = firstUser?.content?.slice(0, 60) || "Conversacion sin mensajes";
+          const date = new Date(c.updated_at);
+          const isActive = c.id === activeId;
+
+          return (
+            <button
+              key={c.id}
+              onClick={() => onSelect(c.id)}
+              className={cn(
+                "w-full text-left px-3 py-2.5 border-b border-border/50 transition-colors group",
+                isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card"
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-foreground truncate">{preview}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Clock className="h-2.5 w-2.5 text-muted-foreground/50" />
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {date.toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                    </span>
+                    {c.empresa && (
+                      <span className="text-[10px] text-muted-foreground/40 truncate">
+                        {c.empresa}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -213,11 +334,14 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [pendingFile, setPendingFile] = useState<ExcelData | null>(null);
   const [chatConfig, setChatConfig] = useState<{ provider: string; model: string; skills: string[] } | null>(null);
+  const [showConversations, setShowConversations] = useState(false);
+  const [conversations, setConversations] = useState<ConversationRow[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevEmpresa = useRef(empresaActiva);
 
-  // Fetch active LLM config directly from DB
+  // Fetch active LLM config
   useEffect(() => {
     async function loadConfig() {
       try {
@@ -235,12 +359,33 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
     loadConfig();
   }, []);
 
+  // Load conversations list
+  const loadConversations = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("conversaciones")
+      .select("id, created_at, updated_at, empresa, mensajes")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    if (data) setConversations(data as ConversationRow[]);
+  }, [user]);
+
   useEffect(() => {
-    if (prevEmpresa.current !== empresaActiva) {
-      setMessages([]);
-      setPendingFile(null);
-      prevEmpresa.current = empresaActiva;
+    loadConversations();
+  }, [loadConversations]);
+
+  // When empresa changes, inject a system-like note but DON'T clear the conversation
+  useEffect(() => {
+    if (prevEmpresa.current !== empresaActiva && messages.length > 0) {
+      const note: ChatMessage = {
+        role: "assistant",
+        content: `--- Contexto cambiado a **${empresaActiva === "TODAS" ? "todas las empresas" : empresaActiva}**. Las siguientes respuestas se basaran en los datos de esta empresa. ---`,
+        ts: Date.now(),
+      };
+      setMessages((prev) => [...prev, note]);
     }
+    prevEmpresa.current = empresaActiva;
   }, [empresaActiva]);
 
   useEffect(() => {
@@ -248,8 +393,6 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
   }, [messages]);
 
   // ── Persist to DB ──
-  const conversacionIdRef = useRef<string | null>(null);
-
   const persistConversation = useCallback(async (msgs: ChatMessage[]) => {
     if (!user) return;
     const mensajes = msgs.map((m) => ({
@@ -260,75 +403,83 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
     }));
 
     try {
-      if (conversacionIdRef.current) {
+      if (activeConvId) {
         await supabase
           .from("conversaciones")
-          .update({ mensajes: mensajes as any, updated_at: new Date().toISOString() } as any)
-          .eq("id", conversacionIdRef.current);
+          .update({ mensajes: mensajes as any, updated_at: new Date().toISOString(), empresa: empresaActiva } as any)
+          .eq("id", activeConvId);
       } else {
         const { data } = await supabase
           .from("conversaciones")
-          .insert({
-            user_id: user.id,
-            mensajes: mensajes as any,
-            empresa: empresaActiva,
-            tokens: 0,
-          } as any)
+          .insert({ user_id: user.id, mensajes: mensajes as any, empresa: empresaActiva, tokens: 0 } as any)
           .select("id")
           .single();
-        if (data) conversacionIdRef.current = data.id;
+        if (data) {
+          setActiveConvId(data.id);
+        }
       }
+      loadConversations();
     } catch {}
-  }, [user, empresaActiva]);
+  }, [user, empresaActiva, activeConvId, loadConversations]);
+
+  // Load a conversation
+  function loadConversation(id: string) {
+    const conv = conversations.find((c) => c.id === id);
+    if (!conv) return;
+    const msgs = Array.isArray(conv.mensajes) ? conv.mensajes : [];
+    setMessages(
+      msgs.map((m: any) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        ts: m.ts || Date.now(),
+      }))
+    );
+    setActiveConvId(id);
+    setShowConversations(false);
+    setPendingFile(null);
+  }
+
+  function startNewConversation() {
+    setMessages([]);
+    setActiveConvId(null);
+    setPendingFile(null);
+    setShowConversations(false);
+  }
+
+  async function deleteConversation(id: string) {
+    await supabase.from("conversaciones").delete().eq("id", id);
+    if (activeConvId === id) {
+      setMessages([]);
+      setActiveConvId(null);
+    }
+    loadConversations();
+  }
 
   // ── Handle file ──
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-
     try {
       const data = await parseExcelFile(file);
       setPendingFile(data);
-
-      // Auto-send a message with the file
       const texto = `Analiza este archivo Excel: ${file.name}`;
       await enviarMensajeConExcel(texto, data);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Error al procesar archivo";
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `⚠️ ${errorMsg}`, ts: Date.now() },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: errorMsg, ts: Date.now() }]);
     }
   }
 
   async function enviarMensajeConExcel(texto: string, excelData: ExcelData) {
     if (isStreaming) return;
     setIsStreaming(true);
-
-    const userMsg: ChatMessage = {
-      role: "user",
-      content: texto,
-      ts: Date.now(),
-      excelData,
-    };
+    const userMsg: ChatMessage = { role: "user", content: texto, ts: Date.now(), excelData };
     setMessages((prev) => [...prev, userMsg]);
-
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
-
-    // Add excel summary as context in the message
     const enrichedText = `${texto}\n\n--- DATOS DEL EXCEL ---\n${excelData.summary}`;
-
-    await streamResponse(enrichedText, history, (finalMsgs) => {
-      // After response, add a message showing the data
-      const withViz: ChatMessage = {
-        role: "assistant",
-        content: "",
-        ts: Date.now(),
-        excelData,
-        showChart: true,
-      };
+    await streamResponse(enrichedText, history, () => {
+      const withViz: ChatMessage = { role: "assistant", content: "", ts: Date.now(), excelData, showChart: true };
       setMessages((prev) => [...prev, withViz]);
       setPendingFile(null);
     });
@@ -338,10 +489,8 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
     if (!texto.trim() || isStreaming) return;
     setInput("");
     setIsStreaming(true);
-
     const userMsg: ChatMessage = { role: "user", content: texto, ts: Date.now() };
     setMessages((prev) => [...prev, userMsg]);
-
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     await streamResponse(texto, history);
   }
@@ -371,11 +520,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({
-          mensaje: texto,
-          empresaFiltro: empresaActiva,
-          history,
-        }),
+        body: JSON.stringify({ mensaje: texto, empresaFiltro: empresaActiva, history }),
       });
 
       if (!res.ok) {
@@ -396,14 +541,11 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
         while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
           let line = buffer.slice(0, newlineIndex);
           buffer = buffer.slice(newlineIndex + 1);
-
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (line.startsWith(":") || line.trim() === "") continue;
           if (!line.startsWith("data: ")) continue;
-
           const jsonStr = line.slice(6).trim();
           if (jsonStr === "[DONE]") continue;
-
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
@@ -434,7 +576,6 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
         upsertAssistant("No pude generar una respuesta. Intenta de nuevo.");
       }
 
-      // Persist after complete
       setMessages((prev) => {
         persistConversation(prev);
         onComplete?.(prev);
@@ -445,50 +586,72 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last?.role === "assistant" && !last.excelData) {
-          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: `⚠️ ${errorMsg}` } : m));
+          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: errorMsg } : m));
         }
-        return [...prev, { role: "assistant", content: `⚠️ ${errorMsg}`, ts: Date.now() }];
+        return [...prev, { role: "assistant", content: errorMsg, ts: Date.now() }];
       });
     } finally {
       setIsStreaming(false);
     }
   }
 
+  // ── Render ──
   return (
     <>
+      {/* Conversations sidebar overlay */}
+      {showConversations && (
+        <div className="absolute inset-0 z-20 flex bg-background">
+          <div className="w-full flex flex-col">
+            <div className="h-[var(--topbar-height)] flex items-center px-4 gap-2 border-b border-border shrink-0">
+              <button onClick={() => setShowConversations(false)} className="text-muted-foreground hover:text-foreground">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="font-semibold text-sm">Conversaciones</span>
+            </div>
+            <ConversationList
+              conversations={conversations}
+              activeId={activeConvId}
+              onSelect={loadConversation}
+              onNew={startNewConversation}
+              onDelete={deleteConversation}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="border-b border-border shrink-0">
         <div className="h-[var(--topbar-height)] flex items-center px-4 gap-2">
+          <button
+            onClick={() => { loadConversations(); setShowConversations(true); }}
+            className="text-muted-foreground hover:text-foreground"
+            title="Conversaciones"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </button>
           <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
           <Bot className="h-4 w-4 text-primary" />
           <span className="font-semibold text-sm text-foreground">Jade AI</span>
           <div className="flex-1" />
+          <span className="text-[9px] text-muted-foreground/40" title={chatConfig ? `${chatConfig.provider} / ${chatConfig.model}` : ""}>
+            {chatConfig?.provider ? `via ${chatConfig.provider}` : ""}
+          </span>
           <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded">
             {empresaActiva}
           </span>
-          {messages.length > 0 && (
-            <button
-              onClick={() => { setMessages([]); conversacionIdRef.current = null; setPendingFile(null); }}
-              className="text-muted-foreground hover:text-foreground"
-              title="Nueva conversacion"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          )}
+          <button
+            onClick={startNewConversation}
+            className="text-muted-foreground hover:text-foreground"
+            title="Nueva conversacion"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
           {onClose && (
-            <button onClick={onClose} className="xl:hidden ml-2 text-muted-foreground hover:text-foreground">
+            <button onClick={onClose} className="xl:hidden ml-1 text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
-        {/* Subtle provider indicator - internal verification only */}
-        {chatConfig && (
-          <div className="px-4 pb-1.5 flex items-center gap-1.5">
-            <span className="text-[9px] text-muted-foreground/50" title={`${chatConfig.provider} / ${chatConfig.model} | Skills: ${chatConfig.skills.join(", ") || "ninguna"}`}>
-              via {chatConfig.provider}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Messages */}
@@ -503,14 +666,13 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
               Tengo acceso a todos los datos financieros de {empresaActiva === "TODAS" ? "el grupo" : empresaActiva}
             </p>
             <p className="text-xs text-muted-foreground/70 mt-2">
-              KPIs · Flujo de caja · Alertas · Sube un Excel
+              KPIs -- Flujo de caja -- Alertas -- Sube un Excel
             </p>
           </div>
         )}
 
         {messages.map((msg, i) => (
           <div key={i}>
-            {/* Excel data visualization message */}
             {msg.excelData && msg.role === "assistant" && msg.showChart ? (
               <div className="mr-auto max-w-[95%]">
                 <DataTable data={msg.excelData} />
@@ -523,9 +685,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
                     <FileSpreadsheet className="h-4 w-4" />
                     <span className="font-medium">{msg.excelData.fileName}</span>
                   </div>
-                  <p className="text-xs opacity-80">
-                    {msg.excelData.rows.length} filas • {msg.excelData.headers.length} columnas
-                  </p>
+                  <p className="text-xs opacity-80">{msg.excelData.rows.length} filas -- {msg.excelData.headers.length} columnas</p>
                   {msg.content && <p className="mt-1">{msg.content}</p>}
                 </div>
               </div>
@@ -540,8 +700,8 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
               >
                 {msg.content ? (
                   msg.role === "assistant" ? (
-                    <div className="prose prose-sm prose-invert max-w-none [&_p]:my-1 [&_li]:my-0.5 [&_ul]:my-1 [&_ol]:my-1 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs [&_strong]:text-primary [&_code]:text-primary/80 [&_code]:bg-primary/10 [&_code]:px-1 [&_code]:rounded">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <div className="max-w-none">
+                      <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
                     </div>
                   ) : (
                     msg.content
@@ -566,7 +726,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
       {/* Quick Questions */}
       {messages.length === 0 && (
         <div className="px-4 pb-2">
-          <p className="text-xs text-muted-foreground mb-2">Preguntas rápidas:</p>
+          <p className="text-xs text-muted-foreground mb-2">Preguntas rapidas:</p>
           <div className="flex flex-wrap gap-1.5">
             {QUICK_QUESTIONS.map((q) => (
               <button
@@ -596,29 +756,12 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
 
       {/* Input */}
       <div className="p-3 border-t border-border shrink-0">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls,.csv"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
+        <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            enviarMensaje(input);
-          }}
+          onSubmit={(e) => { e.preventDefault(); enviarMensaje(input); }}
           className="flex gap-2"
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            disabled={isStreaming}
-            onClick={() => fileInputRef.current?.click()}
-            title="Subir Excel"
-          >
+          <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={isStreaming} onClick={() => fileInputRef.current?.click()} title="Subir Excel">
             <Paperclip className="h-4 w-4" />
           </Button>
           <input
