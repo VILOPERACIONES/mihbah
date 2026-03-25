@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // ── Types ──
@@ -701,7 +702,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
                 {msg.content ? (
                   msg.role === "assistant" ? (
                     <div className="max-w-none">
-                      <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                     </div>
                   ) : (
                     msg.content
