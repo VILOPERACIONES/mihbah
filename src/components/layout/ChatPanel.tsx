@@ -481,25 +481,12 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
             </button>
           )}
         </div>
-        {/* Provider indicator */}
+        {/* Subtle provider indicator - internal verification only */}
         {chatConfig && (
-          <div className="px-4 pb-2 flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-              {chatConfig.provider}
+          <div className="px-4 pb-1.5 flex items-center gap-1.5">
+            <span className="text-[9px] text-muted-foreground/50" title={`${chatConfig.provider} / ${chatConfig.model} | Skills: ${chatConfig.skills.join(", ") || "ninguna"}`}>
+              via {chatConfig.provider}
             </span>
-            <span className="text-[10px] text-muted-foreground">
-              {chatConfig.model}
-            </span>
-            {chatConfig.skills.length > 0 && (
-              <>
-                <span className="text-[10px] text-muted-foreground/50">|</span>
-                {chatConfig.skills.map((s) => (
-                  <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border text-muted-foreground">
-                    {s}
-                  </span>
-                ))}
-              </>
-            )}
           </div>
         )}
       </div>
