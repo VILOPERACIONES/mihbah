@@ -278,6 +278,8 @@ ${alerts.length > 0 ? alerts.join("\n") : "Sin alertas críticas."}
         body: JSON.stringify({
           model,
           messages: aiMessages,
+          max_tokens: 4096,
+          temperature: 0.4,
           stream: true,
         }),
       });
