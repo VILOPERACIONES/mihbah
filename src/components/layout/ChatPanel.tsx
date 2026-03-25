@@ -702,7 +702,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
                 {msg.content ? (
                   msg.role === "assistant" ? (
                     <div className="max-w-none">
-                      <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                     </div>
                   ) : (
                     msg.content
