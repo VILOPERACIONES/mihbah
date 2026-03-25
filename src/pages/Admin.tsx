@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, Pencil, Shield, ShieldCheck } from "lucide-react";
+import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, Pencil, Shield, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,17 +16,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const AVAILABLE_MODELS = [
-  "google/gemini-2.5-pro",
-  "google/gemini-2.5-flash",
-  "google/gemini-2.5-flash-lite",
-  "google/gemini-3-flash-preview",
-  "google/gemini-3.1-pro-preview",
-  "openai/gpt-5",
-  "openai/gpt-5-mini",
-  "openai/gpt-5-nano",
-  "openai/gpt-5.2",
-];
 
 // ── Types ──────────────────────────────────────────────────
 interface UserRow {
@@ -485,6 +474,8 @@ function LLMTab() {
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [newModel, setNewModel] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [fetchingModels, setFetchingModels] = useState<Record<string, boolean>>({});
+  const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
 
   const fetchProviders = useCallback(async () => {
     setLoading(true);
@@ -675,35 +666,75 @@ function LLMTab() {
                       <Input
                         value={newModel[prov.id] ?? ""}
                         onChange={(e) => setNewModel((prev) => ({ ...prev, [prov.id]: e.target.value }))}
-                        placeholder="Agregar modelo personalizado..."
+                        placeholder="Agregar modelo manualmente..."
                         className="bg-background text-xs h-8"
                         onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addModel(prov.id))}
                       />
                       <Button size="sm" variant="outline" onClick={() => addModel(prov.id)} className="h-8 text-xs">
                         <Plus className="h-3 w-3" />
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs gap-1 shrink-0"
+                        disabled={fetchingModels[prov.id] || !prov.base_url || !prov.api_key_encrypted}
+                        onClick={async () => {
+                          setFetchingModels((prev) => ({ ...prev, [prov.id]: true }));
+                          try {
+                            const { data, error } = await supabase.functions.invoke("list-models", {
+                              body: { base_url: prov.base_url, api_key: prov.api_key_encrypted },
+                            });
+                            if (error) throw error;
+                            if (data?.error) {
+                              toast.error(data.error);
+                            } else if (data?.models?.length) {
+                              setAvailableModels((prev) => ({ ...prev, [prov.id]: data.models }));
+                              toast.success(`${data.models.length} modelos encontrados`);
+                            } else {
+                              toast.info("No se encontraron modelos");
+                            }
+                          } catch (err: any) {
+                            toast.error("Error al consultar modelos: " + (err.message || "desconocido"));
+                          } finally {
+                            setFetchingModels((prev) => ({ ...prev, [prov.id]: false }));
+                          }
+                        }}
+                      >
+                        {fetchingModels[prov.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                        Consultar API
+                      </Button>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground mb-1.5">Modelos disponibles (clic para agregar):</p>
-                      <div className="flex flex-wrap gap-1">
-                        {AVAILABLE_MODELS
-                          .filter((m) => !prov.models.includes(m))
-                          .map((m) => (
-                            <button
-                              key={m}
-                              onClick={() => {
-                                updateLocal(prov.id, { models: [...prov.models, m] });
-                              }}
-                              className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                            >
-                              <Plus className="h-2.5 w-2.5" /> {m}
-                            </button>
-                          ))}
-                        {AVAILABLE_MODELS.filter((m) => !prov.models.includes(m)).length === 0 && (
-                          <span className="text-[10px] text-muted-foreground italic">Todos los modelos ya fueron agregados</span>
-                        )}
+
+                    {/* Dynamic models from API */}
+                    {availableModels[prov.id]?.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1.5">
+                          Modelos del proveedor (clic para agregar):
+                        </p>
+                        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                          {availableModels[prov.id]
+                            .filter((m) => !prov.models.includes(m))
+                            .map((m) => (
+                              <button
+                                key={m}
+                                onClick={() => updateLocal(prov.id, { models: [...prov.models, m] })}
+                                className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                              >
+                                <Plus className="h-2.5 w-2.5" /> {m}
+                              </button>
+                            ))}
+                          {availableModels[prov.id].filter((m) => !prov.models.includes(m)).length === 0 && (
+                            <span className="text-[10px] text-muted-foreground italic">Todos los modelos ya fueron agregados</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {!prov.base_url && !prov.api_key_encrypted && (
+                      <p className="text-[10px] text-muted-foreground italic">
+                        Configura la URL base y API Key para consultar los modelos disponibles
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
