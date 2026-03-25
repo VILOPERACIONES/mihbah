@@ -217,18 +217,19 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevEmpresa = useRef(empresaActiva);
 
-  // Fetch active LLM config
+  // Fetch active LLM config directly from DB
   useEffect(() => {
     async function loadConfig() {
       try {
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-config`;
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        const [{ data: provData }, { data: skillsData }] = await Promise.all([
+          supabase.from("llm_providers").select("name, models").eq("is_default", true).limit(1).single(),
+          supabase.from("agent_skills").select("name").eq("enabled", true).order("created_at"),
+        ]);
+        setChatConfig({
+          provider: provData?.name ?? "Lovable AI",
+          model: provData?.models?.[0] ?? "gemini-2.5-flash",
+          skills: (skillsData ?? []).map((s: any) => s.name),
         });
-        if (res.ok) {
-          const data = await res.json();
-          setChatConfig(data);
-        }
       } catch {}
     }
     loadConfig();
