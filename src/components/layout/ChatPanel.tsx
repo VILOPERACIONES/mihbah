@@ -212,9 +212,27 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [pendingFile, setPendingFile] = useState<ExcelData | null>(null);
+  const [chatConfig, setChatConfig] = useState<{ provider: string; model: string; skills: string[] } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevEmpresa = useRef(empresaActiva);
+
+  // Fetch active LLM config
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-config`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setChatConfig(data);
+        }
+      } catch {}
+    }
+    loadConfig();
+  }, []);
 
   useEffect(() => {
     if (prevEmpresa.current !== empresaActiva) {
@@ -438,27 +456,50 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
   return (
     <>
       {/* Header */}
-      <div className="h-[var(--topbar-height)] flex items-center px-4 gap-2 border-b border-border shrink-0">
-        <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-        <Bot className="h-4 w-4 text-primary" />
-        <span className="font-semibold text-sm text-foreground">Jade AI</span>
-        <div className="flex-1" />
-        <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded">
-          {empresaActiva}
-        </span>
-        {messages.length > 0 && (
-          <button
-            onClick={() => { setMessages([]); conversacionIdRef.current = null; setPendingFile(null); }}
-            className="text-muted-foreground hover:text-foreground"
-            title="Nueva conversación"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {onClose && (
-          <button onClick={onClose} className="xl:hidden ml-2 text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
-          </button>
+      <div className="border-b border-border shrink-0">
+        <div className="h-[var(--topbar-height)] flex items-center px-4 gap-2">
+          <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <Bot className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-sm text-foreground">Jade AI</span>
+          <div className="flex-1" />
+          <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded">
+            {empresaActiva}
+          </span>
+          {messages.length > 0 && (
+            <button
+              onClick={() => { setMessages([]); conversacionIdRef.current = null; setPendingFile(null); }}
+              className="text-muted-foreground hover:text-foreground"
+              title="Nueva conversacion"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {onClose && (
+            <button onClick={onClose} className="xl:hidden ml-2 text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        {/* Provider indicator */}
+        {chatConfig && (
+          <div className="px-4 pb-2 flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+              {chatConfig.provider}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {chatConfig.model}
+            </span>
+            {chatConfig.skills.length > 0 && (
+              <>
+                <span className="text-[10px] text-muted-foreground/50">|</span>
+                {chatConfig.skills.map((s) => (
+                  <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border text-muted-foreground">
+                    {s}
+                  </span>
+                ))}
+              </>
+            )}
+          </div>
         )}
       </div>
 
