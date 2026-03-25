@@ -473,8 +473,8 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
             <p className="text-xs text-muted-foreground mt-1">
               Tengo acceso a todos los datos financieros de {empresaActiva === "TODAS" ? "el grupo" : empresaActiva}
             </p>
-            <p className="text-xs text-primary/60 mt-2">
-              📊 KPIs • 📈 Flujo de caja • ⚠️ Alertas • 📎 Sube un Excel
+            <p className="text-xs text-muted-foreground/70 mt-2">
+              KPIs · Flujo de caja · Alertas · Sube un Excel
             </p>
           </div>
         )}
