@@ -587,28 +587,16 @@ function LLMTab() {
       ) : (
         <div className="grid gap-4">
           {providers.map((prov) => (
-            <Card key={prov.id} className={cn("p-4 border-border transition-colors", prov.is_default && "border-primary/50 bg-primary/5")}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold bg-primary/20 text-primary">
+            <Card key={prov.id} className={cn("p-5 border-border transition-colors", prov.is_default && "border-primary/50 bg-primary/5")}>
+              {/* Header: actions */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold bg-primary/20 text-primary">
                     {prov.name.charAt(0)}
                   </div>
-                  <div className="flex-1">
-                    <Input
-                      value={prov.name}
-                      onChange={(e) => updateLocal(prov.id, { name: e.target.value })}
-                      className="bg-transparent border-none p-0 h-auto font-medium text-sm focus-visible:ring-0"
-                    />
-                    <Input
-                      value={prov.base_url}
-                      onChange={(e) => updateLocal(prov.id, { base_url: e.target.value })}
-                      placeholder="https://api.provider.com/v1"
-                      className="bg-transparent border-none p-0 h-auto text-xs text-muted-foreground focus-visible:ring-0"
-                    />
-                  </div>
+                  {prov.is_default && <Badge className="bg-primary/20 text-primary text-xs">Default</Badge>}
                 </div>
                 <div className="flex items-center gap-2">
-                  {prov.is_default && <Badge className="bg-primary/20 text-primary text-xs">Default</Badge>}
                   {!prov.is_default && (
                     <Button variant="ghost" size="sm" onClick={() => setDefault(prov.id)} className="text-xs">
                       Usar como default
@@ -630,15 +618,34 @@ function LLMTab() {
                 </div>
               </div>
 
-              <div className="space-y-3">
+              {/* Fields grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                 <div>
+                  <Label className="text-xs text-muted-foreground">Nombre del proveedor</Label>
+                  <Input
+                    value={prov.name}
+                    onChange={(e) => updateLocal(prov.id, { name: e.target.value })}
+                    placeholder="Ej: Anthropic, OpenAI..."
+                    className="bg-background mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">URL Base de la API</Label>
+                  <Input
+                    value={prov.base_url}
+                    onChange={(e) => updateLocal(prov.id, { base_url: e.target.value })}
+                    placeholder="https://api.anthropic.com/v1"
+                    className="bg-background mt-1"
+                  />
+                </div>
+                <div className="md:col-span-2">
                   <Label className="text-xs text-muted-foreground">API Key</Label>
                   <div className="flex gap-2 mt-1">
                     <Input
                       type={showKeys[prov.id] ? "text" : "password"}
                       value={prov.api_key_encrypted}
                       onChange={(e) => updateLocal(prov.id, { api_key_encrypted: e.target.value })}
-                      placeholder="sk-..."
+                      placeholder="sk-ant-..."
                       className="bg-background flex-1"
                     />
                     <Button
@@ -650,10 +657,47 @@ function LLMTab() {
                     </Button>
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <Label className="text-xs text-muted-foreground">Modelos disponibles</Label>
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {/* Models section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs text-muted-foreground">Modelos</Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5"
+                    disabled={fetchingModels[prov.id] || !prov.base_url.trim() || !prov.api_key_encrypted.trim()}
+                    onClick={async () => {
+                      setFetchingModels((prev) => ({ ...prev, [prov.id]: true }));
+                      try {
+                        const { data, error } = await supabase.functions.invoke("list-models", {
+                          body: { base_url: prov.base_url, api_key: prov.api_key_encrypted },
+                        });
+                        if (error) throw error;
+                        if (data?.error) {
+                          toast.error(data.error);
+                        } else if (data?.models?.length) {
+                          setAvailableModels((prev) => ({ ...prev, [prov.id]: data.models }));
+                          toast.success(`${data.models.length} modelos encontrados`);
+                        } else {
+                          toast.info("No se encontraron modelos");
+                        }
+                      } catch (err: any) {
+                        toast.error("Error al consultar modelos: " + (err.message || "desconocido"));
+                      } finally {
+                        setFetchingModels((prev) => ({ ...prev, [prov.id]: false }));
+                      }
+                    }}
+                  >
+                    {fetchingModels[prov.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                    {fetchingModels[prov.id] ? "Consultando..." : "Consultar modelos de la API"}
+                  </Button>
+                </div>
+
+                {/* Selected models */}
+                {prov.models.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
                     {prov.models.map((m) => (
                       <Badge key={m} variant="outline" className="text-xs gap-1">
                         {m}
@@ -661,82 +705,52 @@ function LLMTab() {
                       </Badge>
                     ))}
                   </div>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        value={newModel[prov.id] ?? ""}
-                        onChange={(e) => setNewModel((prev) => ({ ...prev, [prov.id]: e.target.value }))}
-                        placeholder="Agregar modelo manualmente..."
-                        className="bg-background text-xs h-8"
-                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addModel(prov.id))}
-                      />
-                      <Button size="sm" variant="outline" onClick={() => addModel(prov.id)} className="h-8 text-xs">
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs gap-1 shrink-0"
-                        disabled={fetchingModels[prov.id] || !prov.base_url || !prov.api_key_encrypted}
-                        onClick={async () => {
-                          setFetchingModels((prev) => ({ ...prev, [prov.id]: true }));
-                          try {
-                            const { data, error } = await supabase.functions.invoke("list-models", {
-                              body: { base_url: prov.base_url, api_key: prov.api_key_encrypted },
-                            });
-                            if (error) throw error;
-                            if (data?.error) {
-                              toast.error(data.error);
-                            } else if (data?.models?.length) {
-                              setAvailableModels((prev) => ({ ...prev, [prov.id]: data.models }));
-                              toast.success(`${data.models.length} modelos encontrados`);
-                            } else {
-                              toast.info("No se encontraron modelos");
-                            }
-                          } catch (err: any) {
-                            toast.error("Error al consultar modelos: " + (err.message || "desconocido"));
-                          } finally {
-                            setFetchingModels((prev) => ({ ...prev, [prov.id]: false }));
-                          }
-                        }}
-                      >
-                        {fetchingModels[prov.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                        Consultar API
-                      </Button>
+                )}
+
+                {/* Available models from API */}
+                {availableModels[prov.id]?.length > 0 && (
+                  <div className="rounded-lg border border-dashed border-border p-3 mt-2">
+                    <p className="text-[11px] text-muted-foreground mb-2 font-medium">
+                      Modelos disponibles en el proveedor (clic para agregar):
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                      {availableModels[prov.id]
+                        .filter((m) => !prov.models.includes(m))
+                        .map((m) => (
+                          <button
+                            key={m}
+                            onClick={() => updateLocal(prov.id, { models: [...prov.models, m] })}
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                          >
+                            <Plus className="h-2.5 w-2.5" /> {m}
+                          </button>
+                        ))}
+                      {availableModels[prov.id].filter((m) => !prov.models.includes(m)).length === 0 && (
+                        <span className="text-[10px] text-muted-foreground italic">Todos los modelos ya fueron agregados</span>
+                      )}
                     </div>
-
-                    {/* Dynamic models from API */}
-                    {availableModels[prov.id]?.length > 0 && (
-                      <div>
-                        <p className="text-[10px] text-muted-foreground mb-1.5">
-                          Modelos del proveedor (clic para agregar):
-                        </p>
-                        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                          {availableModels[prov.id]
-                            .filter((m) => !prov.models.includes(m))
-                            .map((m) => (
-                              <button
-                                key={m}
-                                onClick={() => updateLocal(prov.id, { models: [...prov.models, m] })}
-                                className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                              >
-                                <Plus className="h-2.5 w-2.5" /> {m}
-                              </button>
-                            ))}
-                          {availableModels[prov.id].filter((m) => !prov.models.includes(m)).length === 0 && (
-                            <span className="text-[10px] text-muted-foreground italic">Todos los modelos ya fueron agregados</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {!prov.base_url && !prov.api_key_encrypted && (
-                      <p className="text-[10px] text-muted-foreground italic">
-                        Configura la URL base y API Key para consultar los modelos disponibles
-                      </p>
-                    )}
                   </div>
+                )}
+
+                {/* Manual add */}
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newModel[prov.id] ?? ""}
+                    onChange={(e) => setNewModel((prev) => ({ ...prev, [prov.id]: e.target.value }))}
+                    placeholder="Agregar modelo manualmente..."
+                    className="bg-background text-xs h-8"
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addModel(prov.id))}
+                  />
+                  <Button size="sm" variant="outline" onClick={() => addModel(prov.id)} className="h-8 text-xs">
+                    <Plus className="h-3 w-3" />
+                  </Button>
                 </div>
+
+                {(!prov.base_url.trim() || !prov.api_key_encrypted.trim()) && (
+                  <p className="text-[10px] text-muted-foreground italic mt-2">
+                    Ingresa la URL base y API Key para poder consultar los modelos disponibles
+                  </p>
+                )}
               </div>
             </Card>
           ))}
