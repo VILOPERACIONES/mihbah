@@ -19,7 +19,7 @@ export function Topbar() {
     : ["TODAS" as EmpresaFiltro, ...(user?.empresas ?? []) as EmpresaFiltro[]];
 
   // Check if user has admin/super_admin role for upload permission
-  const canUpload = user?.role === "SUPER_ADMIN" || user?.role === "SUPER_ADMIN_DEV" || user?.role === "ADMIN";
+  const canUpload = user?.rol === "SUPER_ADMIN" || user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "ADMIN";
 
   return (
     <>
