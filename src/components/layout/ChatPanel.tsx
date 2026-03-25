@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // ── Types ──
