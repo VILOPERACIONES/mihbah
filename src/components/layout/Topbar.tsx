@@ -1,25 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useAppStore, type EmpresaFiltro } from "@/store/app.store";
+import { useAppStore } from "@/store/app.store";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, MessageCircle, Upload } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Menu, MessageCircle, Upload, ChevronsUpDown, Check, Building2 } from "lucide-react";
 import { ModalExcelUpload } from "@/components/movimientos/ModalExcelUpload";
-
-const ALL_EMPRESAS: EmpresaFiltro[] = ["TODAS", "BM CORP", "MIHBAH", "YCDI"];
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export function Topbar() {
   const { empresaActiva, setEmpresaActiva, setSidebarOpen, setChatOpen } = useAppStore();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showUpload, setShowUpload] = useState(false);
+  const [empresaOpen, setEmpresaOpen] = useState(false);
+  const [empresas, setEmpresas] = useState<string[]>([]);
 
+  // Load dynamic empresas from DB
+  useEffect(() => {
+    async function loadEmpresas() {
+      const { data } = await supabase
+        .from("movimientos")
+        .select("empresa")
+        .eq("activo", true);
+      if (data) {
+        const unique = [...new Set(data.map((m) => m.empresa))].sort();
+        setEmpresas(unique);
+      }
+    }
+    loadEmpresas();
+  }, []);
+
+  // Filter empresas by user permission
   const allowedEmpresas = user?.empresas.includes("*")
-    ? ALL_EMPRESAS
-    : ["TODAS" as EmpresaFiltro, ...(user?.empresas ?? []) as EmpresaFiltro[]];
+    ? empresas
+    : empresas.filter((e) => user?.empresas.includes(e));
 
-  // Check if user has admin/super_admin role for upload permission
   const canUpload = user?.rol === "SUPER_ADMIN" || user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "ADMIN";
+
+  const displayLabel = empresaActiva === "TODAS" ? "Todas las empresas" : empresaActiva;
 
   return (
     <>
@@ -29,23 +60,46 @@ export function Topbar() {
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Empresa selector */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-          {allowedEmpresas.map((emp) => (
+        {/* Empresa selector - Combobox */}
+        <Popover open={empresaOpen} onOpenChange={setEmpresaOpen}>
+          <PopoverTrigger asChild>
             <button
-              key={emp}
-              onClick={() => setEmpresaActiva(emp)}
-              className={cn(
-                "px-2.5 md:px-3 py-1 rounded-md text-xs md:text-sm font-medium transition-colors whitespace-nowrap",
-                empresaActiva === emp
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-card"
-              )}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-card/80 transition-colors text-sm min-w-[160px] max-w-[240px]"
+              aria-expanded={empresaOpen}
             >
-              {emp}
+              <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="truncate flex-1 text-left font-medium text-foreground">{displayLabel}</span>
+              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             </button>
-          ))}
-        </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-[220px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Buscar empresa..." className="h-9" />
+              <CommandList>
+                <CommandEmpty>No se encontro empresa.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    value="TODAS"
+                    onSelect={() => { setEmpresaActiva("TODAS"); setEmpresaOpen(false); }}
+                  >
+                    <Check className={cn("mr-2 h-3.5 w-3.5", empresaActiva === "TODAS" ? "opacity-100" : "opacity-0")} />
+                    Todas las empresas
+                  </CommandItem>
+                  {allowedEmpresas.map((emp) => (
+                    <CommandItem
+                      key={emp}
+                      value={emp}
+                      onSelect={() => { setEmpresaActiva(emp); setEmpresaOpen(false); }}
+                    >
+                      <Check className={cn("mr-2 h-3.5 w-3.5", empresaActiva === emp ? "opacity-100" : "opacity-0")} />
+                      {emp}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
 
         <div className="flex-1" />
 
