@@ -212,9 +212,27 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [pendingFile, setPendingFile] = useState<ExcelData | null>(null);
+  const [chatConfig, setChatConfig] = useState<{ provider: string; model: string; skills: string[] } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevEmpresa = useRef(empresaActiva);
+
+  // Fetch active LLM config
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-config`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setChatConfig(data);
+        }
+      } catch {}
+    }
+    loadConfig();
+  }, []);
 
   useEffect(() => {
     if (prevEmpresa.current !== empresaActiva) {
