@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -889,18 +890,11 @@ function SkillsTab() {
                   </div>
                 ) : (
                   <div className="p-4 flex items-start gap-4">
-                    <button
-                      onClick={() => toggleSkill(skill.id)}
-                      className={cn(
-                        "mt-0.5 h-5 w-9 rounded-full transition-colors relative shrink-0",
-                        skill.enabled ? "bg-primary" : "bg-muted"
-                      )}
-                    >
-                      <span className={cn(
-                        "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
-                        skill.enabled ? "translate-x-4" : "translate-x-0.5"
-                      )} />
-                    </button>
+                    <Switch
+                      checked={skill.enabled}
+                      onCheckedChange={() => toggleSkill(skill.id)}
+                      className="mt-0.5 shrink-0"
+                    />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
