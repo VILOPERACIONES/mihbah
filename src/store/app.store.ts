@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type EmpresaFiltro = "TODAS" | "BM CORP" | "MIHBAH" | "YCDI";
+export type EmpresaFiltro = string;
 
 interface AppStore {
   empresaActiva: EmpresaFiltro;
