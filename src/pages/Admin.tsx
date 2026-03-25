@@ -16,6 +16,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const AVAILABLE_MODELS = [
+  "google/gemini-2.5-pro",
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-flash-lite",
+  "google/gemini-3-flash-preview",
+  "google/gemini-3.1-pro-preview",
+  "openai/gpt-5",
+  "openai/gpt-5-mini",
+  "openai/gpt-5-nano",
+  "openai/gpt-5.2",
+];
+
 // ── Types ──────────────────────────────────────────────────
 interface UserRow {
   id: string;
@@ -658,17 +670,40 @@ function LLMTab() {
                       </Badge>
                     ))}
                   </div>
-                  <div className="flex gap-2 mt-2">
-                    <Input
-                      value={newModel[prov.id] ?? ""}
-                      onChange={(e) => setNewModel((prev) => ({ ...prev, [prov.id]: e.target.value }))}
-                      placeholder="Agregar modelo..."
-                      className="bg-background text-xs h-8"
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addModel(prov.id))}
-                    />
-                    <Button size="sm" variant="outline" onClick={() => addModel(prov.id)} className="h-8 text-xs">
-                      <Plus className="h-3 w-3" />
-                    </Button>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newModel[prov.id] ?? ""}
+                        onChange={(e) => setNewModel((prev) => ({ ...prev, [prov.id]: e.target.value }))}
+                        placeholder="Agregar modelo personalizado..."
+                        className="bg-background text-xs h-8"
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addModel(prov.id))}
+                      />
+                      <Button size="sm" variant="outline" onClick={() => addModel(prov.id)} className="h-8 text-xs">
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-1.5">Modelos disponibles (clic para agregar):</p>
+                      <div className="flex flex-wrap gap-1">
+                        {AVAILABLE_MODELS
+                          .filter((m) => !prov.models.includes(m))
+                          .map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => {
+                                updateLocal(prov.id, { models: [...prov.models, m] });
+                              }}
+                              className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                            >
+                              <Plus className="h-2.5 w-2.5" /> {m}
+                            </button>
+                          ))}
+                        {AVAILABLE_MODELS.filter((m) => !prov.models.includes(m)).length === 0 && (
+                          <span className="text-[10px] text-muted-foreground italic">Todos los modelos ya fueron agregados</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
