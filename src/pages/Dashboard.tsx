@@ -43,13 +43,9 @@ interface Movimiento {
   monto: number;
 }
 
-interface CuentasPendientes {
+interface CuentasDashboard {
   cxc: number;
   cxp: number;
-  cxc_vencidas: number;
-  cxp_vencidas: number;
-  conteo_cxc: number;
-  conteo_cxp: number;
 }
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -66,7 +62,7 @@ export default function DashboardPage() {
   const [selectedAnio, setSelectedAnio] = useState<number | null>(null);
   const [selectedMes, setSelectedMes] = useState<number | null>(null);
   const [periodsLoaded, setPeriodsLoaded] = useState(false);
-  const [cuentas, setCuentas] = useState<CuentasPendientes | null>(null);
+  const [cuentas, setCuentas] = useState<CuentasDashboard | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -119,7 +115,7 @@ export default function DashboardPage() {
           if (empresaFilter) q = q.eq("empresa", empresaFilter);
           return q;
         })(),
-        supabase.rpc("get_cuentas_pendientes_totales" as any, { _empresa: empresaFilter }),
+        supabase.rpc("get_cxc_cxp_dashboard" as any, { _empresa: empresaFilter }),
       ]);
 
       if (kpiRes.data) {
@@ -157,10 +153,6 @@ export default function DashboardPage() {
         setCuentas({
           cxc: Number(c.cxc) || 0,
           cxp: Number(c.cxp) || 0,
-          cxc_vencidas: Number(c.cxc_vencidas) || 0,
-          cxp_vencidas: Number(c.cxp_vencidas) || 0,
-          conteo_cxc: Number(c.conteo_cxc) || 0,
-          conteo_cxp: Number(c.conteo_cxp) || 0,
         });
       }
 
@@ -259,14 +251,7 @@ export default function DashboardPage() {
             <span className="text-xs text-muted-foreground font-medium">Cuentas por Cobrar</span>
           </div>
           <MontoDisplay monto={cuentas?.cxc ?? 0} tipo="INGRESO" size="xl" />
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-muted-foreground">{cuentas?.conteo_cxc ?? 0} pendientes</span>
-            {(cuentas?.cxc_vencidas ?? 0) > 0 && (
-              <span className="text-xs text-[hsl(var(--destructive))] font-medium">
-                {formatMonto(cuentas!.cxc_vencidas, true)} vencidas
-              </span>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground mt-2">Basado en ingresos de clientes registrados</p>
         </Card>
 
         <Card className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
@@ -275,14 +260,7 @@ export default function DashboardPage() {
             <span className="text-xs text-muted-foreground font-medium">Cuentas por Pagar</span>
           </div>
           <MontoDisplay monto={cuentas?.cxp ?? 0} tipo="SALIDA" size="xl" />
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-muted-foreground">{cuentas?.conteo_cxp ?? 0} pendientes</span>
-            {(cuentas?.cxp_vencidas ?? 0) > 0 && (
-              <span className="text-xs text-[hsl(var(--destructive))] font-medium">
-                {formatMonto(cuentas!.cxp_vencidas, true)} vencidas
-              </span>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground mt-2">Basado en obligaciones y filiales registradas</p>
         </Card>
       </div>
 
