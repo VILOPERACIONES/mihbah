@@ -36,36 +36,34 @@ export function AppShell() {
           </>
         )}
 
-        {/* Main + optional Chat resizable area */}
-        {chatOpen ? (
-          <ResizablePanelGroup
-            direction="horizontal"
-            className="flex-1 hidden lg:flex"
-          >
-            <ResizablePanel defaultSize={70} minSize={40}>
-              <div className="flex flex-col h-full overflow-hidden">
-                <Topbar />
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
-                  <Outlet />
-                </main>
-              </div>
-            </ResizablePanel>
+        {/* Desktop: resizable main + chat */}
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="flex-1 hidden lg:flex"
+        >
+          <ResizablePanel defaultSize={chatOpen ? 70 : 100} minSize={40}>
+            <div className="flex flex-col h-full overflow-hidden">
+              <Topbar />
+              <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
+                <Outlet />
+              </main>
+            </div>
+          </ResizablePanel>
 
-            <ResizableHandle withHandle />
+          {chatOpen && (
+            <>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+                <div className="h-full flex flex-col bg-[hsl(var(--bg-surface))]">
+                  <ChatPanel onClose={() => setChatOpen(false)} />
+                </div>
+              </ResizablePanel>
+            </>
+          )}
+        </ResizablePanelGroup>
 
-            <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-              <div className="h-full flex flex-col bg-[hsl(var(--bg-surface))]">
-                <ChatPanel onClose={() => setChatOpen(false)} />
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        ) : null}
-
-        {/* Main area when chat is closed (or on mobile) */}
-        <div className={cn(
-          "flex-1 flex flex-col overflow-hidden",
-          chatOpen ? "lg:hidden" : ""
-        )}>
+        {/* Mobile: main content */}
+        <div className="flex-1 flex flex-col overflow-hidden lg:hidden">
           <Topbar />
           <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
             <Outlet />
