@@ -62,7 +62,7 @@ export default function DashboardPage() {
   const [selectedAnio, setSelectedAnio] = useState<number | null>(null);
   const [selectedMes, setSelectedMes] = useState<number | null>(null);
   const [periodsLoaded, setPeriodsLoaded] = useState(false);
-  const [cuentas, setCuentas] = useState<CuentasPendientes | null>(null);
+  const [cuentas, setCuentas] = useState<CuentasDashboard | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   useEffect(() => {
