@@ -65,6 +65,7 @@ export default function DashboardPage() {
   const [periodsLoaded, setPeriodsLoaded] = useState(false);
   const [cuentas, setCuentas] = useState<CuentasDashboard | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     async function loadPeriods() {
