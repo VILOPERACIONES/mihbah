@@ -247,7 +247,41 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Charts */}
+      {/* Cuentas por Cobrar / Pagar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+        <Card className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-2 mb-3">
+            <FileCheck className="h-4 w-4 text-primary" />
+            <span className="text-xs text-muted-foreground font-medium">Cuentas por Cobrar</span>
+          </div>
+          <MontoDisplay monto={cuentas?.cxc ?? 0} tipo="INGRESO" size="xl" />
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-xs text-muted-foreground">{cuentas?.conteo_cxc ?? 0} pendientes</span>
+            {(cuentas?.cxc_vencidas ?? 0) > 0 && (
+              <span className="text-xs text-[hsl(var(--destructive))] font-medium">
+                {formatMonto(cuentas!.cxc_vencidas, true)} vencidas
+              </span>
+            )}
+          </div>
+        </Card>
+
+        <Card className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-2 mb-3">
+            <FileWarning className="h-4 w-4 text-[hsl(var(--destructive))]" />
+            <span className="text-xs text-muted-foreground font-medium">Cuentas por Pagar</span>
+          </div>
+          <MontoDisplay monto={cuentas?.cxp ?? 0} tipo="SALIDA" size="xl" />
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-xs text-muted-foreground">{cuentas?.conteo_cxp ?? 0} pendientes</span>
+            {(cuentas?.cxp_vencidas ?? 0) > 0 && (
+              <span className="text-xs text-[hsl(var(--destructive))] font-medium">
+                {formatMonto(cuentas!.cxp_vencidas, true)} vencidas
+              </span>
+            )}
+          </div>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-4 border-border rounded-xl bg-card">
           <h3 className="text-sm font-medium text-foreground mb-4">Flujo Mensual</h3>
