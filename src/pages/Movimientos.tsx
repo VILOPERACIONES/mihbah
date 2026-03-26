@@ -38,6 +38,7 @@ export default function MovimientosPage() {
   const [tipoFilter, setTipoFilter] = useState("all");
   const [excelOpen, setExcelOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [cardData, setCardData] = useState({ ventas: 0, ventasCount: 0, inversion: 0, inversionCount: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,13 +59,51 @@ export default function MovimientosPage() {
     setLoading(false);
   }, [empresaActiva, tipoFilter, filtroBusqueda, page]);
 
+  const loadCards = useCallback(async () => {
+    const baseFilter = (q: any) => {
+      let r = q.eq("activo", true).eq("tipo", "INGRESO");
+      if (empresaActiva !== "TODAS") r = r.eq("empresa", empresaActiva);
+      return r;
+    };
+
+    const [ventasRes, inversionRes] = await Promise.all([
+      baseFilter(supabase.from("movimientos").select("monto", { count: "exact" }))
+        .eq("categoria", "CLIENTES"),
+      baseFilter(supabase.from("movimientos").select("monto", { count: "exact" }))
+        .in("categoria", ["ACCIONISTAS", "SOCIOS", "EMPRESA"]),
+    ]);
+
+    const sum = (rows: any[] | null) => (rows ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
+    setCardData({
+      ventas: sum(ventasRes.data),
+      ventasCount: ventasRes.count ?? 0,
+      inversion: sum(inversionRes.data),
+      inversionCount: inversionRes.count ?? 0,
+    });
+  }, [empresaActiva]);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadCards(); }, [loadCards]);
   useEffect(() => { setPage(0); }, [empresaActiva, tipoFilter, filtroBusqueda]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingreso por Ventas</p>
+          <p className="text-2xl font-semibold text-[hsl(var(--jade))]">{formatMonto(cardData.ventas)}</p>
+          <p className="text-xs text-muted-foreground">{cardData.ventasCount.toLocaleString()} movimientos · Categoría: CLIENTES</p>
+        </Card>
+        <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingreso de Inversión</p>
+          <p className="text-2xl font-semibold text-[hsl(var(--turquesa))]">{formatMonto(cardData.inversion)}</p>
+          <p className="text-xs text-muted-foreground">{cardData.inversionCount.toLocaleString()} movimientos · ACCIONISTAS, SOCIOS, EMPRESA</p>
+        </Card>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Movimientos</h1>
