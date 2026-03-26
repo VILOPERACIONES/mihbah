@@ -6,7 +6,7 @@ import { TipoChip } from "@/components/shared/TipoChip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar, FileCheck, FileWarning } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -43,6 +43,15 @@ interface Movimiento {
   monto: number;
 }
 
+interface CuentasPendientes {
+  cxc: number;
+  cxp: number;
+  cxc_vencidas: number;
+  cxp_vencidas: number;
+  conteo_cxc: number;
+  conteo_cxp: number;
+}
+
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 export default function DashboardPage() {
@@ -57,6 +66,7 @@ export default function DashboardPage() {
   const [selectedAnio, setSelectedAnio] = useState<number | null>(null);
   const [selectedMes, setSelectedMes] = useState<number | null>(null);
   const [periodsLoaded, setPeriodsLoaded] = useState(false);
+  const [cuentas, setCuentas] = useState<CuentasPendientes | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,7 +105,7 @@ export default function DashboardPage() {
 
       setPeriodoLabel(`${MESES[mes]} ${anio}`);
 
-      const [kpiRes, flujoRes, catRes, recRes] = await Promise.all([
+      const [kpiRes, flujoRes, catRes, recRes, cuentasRes] = await Promise.all([
         supabase.rpc("get_kpis_mes", { _anio: anio, _mes: mes, _empresa: empresaFilter }),
         supabase.rpc("get_flujo_mensual", { _anio_desde: anio - 2, _empresa: empresaFilter }),
         supabase.rpc("get_top_categorias", { _anio: anio, _mes: mes, _limite: 8, _empresa: empresaFilter }),
@@ -109,6 +119,7 @@ export default function DashboardPage() {
           if (empresaFilter) q = q.eq("empresa", empresaFilter);
           return q;
         })(),
+        supabase.rpc("get_cuentas_pendientes_totales" as any, { _empresa: empresaFilter }),
       ]);
 
       if (kpiRes.data) {
@@ -140,6 +151,19 @@ export default function DashboardPage() {
       }
 
       if (recRes.data) setRecientes(recRes.data as Movimiento[]);
+
+      if (cuentasRes.data) {
+        const c = cuentasRes.data as any;
+        setCuentas({
+          cxc: Number(c.cxc) || 0,
+          cxp: Number(c.cxp) || 0,
+          cxc_vencidas: Number(c.cxc_vencidas) || 0,
+          cxp_vencidas: Number(c.cxp_vencidas) || 0,
+          conteo_cxc: Number(c.conteo_cxc) || 0,
+          conteo_cxp: Number(c.conteo_cxp) || 0,
+        });
+      }
+
       setLoading(false);
     }
     load();
@@ -160,6 +184,10 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Skeleton className="h-72 rounded-xl" />
@@ -223,7 +251,41 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Charts */}
+      {/* Cuentas por Cobrar / Pagar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+        <Card className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-2 mb-3">
+            <FileCheck className="h-4 w-4 text-primary" />
+            <span className="text-xs text-muted-foreground font-medium">Cuentas por Cobrar</span>
+          </div>
+          <MontoDisplay monto={cuentas?.cxc ?? 0} tipo="INGRESO" size="xl" />
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-xs text-muted-foreground">{cuentas?.conteo_cxc ?? 0} pendientes</span>
+            {(cuentas?.cxc_vencidas ?? 0) > 0 && (
+              <span className="text-xs text-[hsl(var(--destructive))] font-medium">
+                {formatMonto(cuentas!.cxc_vencidas, true)} vencidas
+              </span>
+            )}
+          </div>
+        </Card>
+
+        <Card className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-2 mb-3">
+            <FileWarning className="h-4 w-4 text-[hsl(var(--destructive))]" />
+            <span className="text-xs text-muted-foreground font-medium">Cuentas por Pagar</span>
+          </div>
+          <MontoDisplay monto={cuentas?.cxp ?? 0} tipo="SALIDA" size="xl" />
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-xs text-muted-foreground">{cuentas?.conteo_cxp ?? 0} pendientes</span>
+            {(cuentas?.cxp_vencidas ?? 0) > 0 && (
+              <span className="text-xs text-[hsl(var(--destructive))] font-medium">
+                {formatMonto(cuentas!.cxp_vencidas, true)} vencidas
+              </span>
+            )}
+          </div>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-4 border-border rounded-xl bg-card">
           <h3 className="text-sm font-medium text-foreground mb-4">Flujo Mensual</h3>
