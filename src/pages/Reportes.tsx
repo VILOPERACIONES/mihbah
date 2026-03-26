@@ -447,9 +447,12 @@ export default function ReportesPage() {
             </div>
           </div>
         </Card>
-      )}
 
-      {/* Alerts */}
+        {/* Drill-down panel for income breakdown */}
+        {drillItems.length > 0 && !expandedMonth && (
+          <DrillPanel items={drillItems} title={drillTitle} onClose={() => { setDrillItems([]); }} onItemClick={(id) => setDetailId(id)} />
+        )}
+      )}
       {alerts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {alerts.map((a, i) => <AlertCard key={i} {...a} />)}
