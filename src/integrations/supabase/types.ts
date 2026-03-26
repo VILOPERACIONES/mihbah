@@ -341,6 +341,14 @@ export type Database = {
         Args: { _empresa?: string }
         Returns: Json
       }
+      get_cuentas_resumen: {
+        Args: { _empresa?: string }
+        Returns: {
+          count: number
+          cuenta: string
+          saldo: number
+        }[]
+      }
       get_cxc_cxp_dashboard: { Args: { _empresa?: string }; Returns: Json }
       get_flujo_caja_mensual: {
         Args: { _anio_desde: number; _anio_hasta: number; _empresa?: string }
