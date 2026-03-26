@@ -4,6 +4,11 @@ import { AppSidebar } from "./Sidebar";
 import { ChatPanel } from "./ChatPanel";
 import { useAppStore } from "@/store/app.store";
 import { cn } from "@/lib/utils";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 
 export function AppShell() {
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed, chatOpen, setChatOpen } = useAppStore();
@@ -31,18 +36,36 @@ export function AppShell() {
           </>
         )}
 
-        {/* Main area: topbar + content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Main + Chat resizable area (desktop) */}
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="flex-1 hidden xl:flex"
+        >
+          <ResizablePanel defaultSize={70} minSize={40}>
+            <div className="flex flex-col h-full overflow-hidden">
+              <Topbar />
+              <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
+                <Outlet />
+              </main>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+            <div className="h-full flex flex-col bg-[hsl(var(--bg-surface))]">
+              <ChatPanel />
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+
+        {/* Main area without chat (below xl) */}
+        <div className="flex-1 flex flex-col overflow-hidden xl:hidden">
           <Topbar />
           <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
             <Outlet />
           </main>
         </div>
-
-        {/* Desktop chat panel */}
-        <aside className="hidden xl:flex w-[var(--chat-width)] h-full flex-col border-l border-border shrink-0 bg-[hsl(var(--bg-surface))]">
-          <ChatPanel />
-        </aside>
 
         {/* Mobile chat overlay */}
         {chatOpen && (
