@@ -6,7 +6,7 @@ import { TipoChip } from "@/components/shared/TipoChip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar, FileCheck, FileWarning } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
