@@ -23,6 +23,11 @@ interface AppStore {
   resetFiltros: () => void;
 }
 
+const getInitialChatOpen = () => {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(min-width: 1024px)").matches;
+};
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
@@ -32,7 +37,7 @@ export const useAppStore = create<AppStore>()(
       setSidebarOpen: (v) => set({ sidebarOpen: v }),
       sidebarCollapsed: false,
       setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
-      chatOpen: false,
+      chatOpen: getInitialChatOpen(),
       setChatOpen: (v) => set({ chatOpen: v }),
       filtroTipo: [],
       filtroCategoria: "",

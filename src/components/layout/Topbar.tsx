@@ -21,14 +21,13 @@ import {
 } from "@/components/ui/command";
 
 export function Topbar() {
-  const { empresaActiva, setEmpresaActiva, setSidebarOpen, setChatOpen } = useAppStore();
+  const { empresaActiva, setEmpresaActiva, setSidebarOpen, chatOpen, setChatOpen } = useAppStore();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showUpload, setShowUpload] = useState(false);
   const [empresaOpen, setEmpresaOpen] = useState(false);
   const [empresas, setEmpresas] = useState<string[]>([]);
 
-  // Load dynamic empresas from DB
   useEffect(() => {
     async function loadEmpresas() {
       const { data } = await supabase
@@ -43,24 +42,20 @@ export function Topbar() {
     loadEmpresas();
   }, []);
 
-  // Filter empresas by user permission
   const allowedEmpresas = user?.empresas.includes("*")
     ? empresas
     : empresas.filter((e) => user?.empresas.includes(e));
 
   const canUpload = user?.rol === "SUPER_ADMIN" || user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "ADMIN";
-
   const displayLabel = empresaActiva === "TODAS" ? "Todas las empresas" : empresaActiva;
 
   return (
     <>
       <header className="h-[var(--topbar-height)] flex items-center px-3 md:px-4 gap-2 md:gap-4 border-b border-border shrink-0 bg-[hsl(var(--bg-surface))]">
-        {/* Mobile menu button */}
         <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground">
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Empresa selector - Combobox */}
         <Popover open={empresaOpen} onOpenChange={setEmpresaOpen}>
           <PopoverTrigger asChild>
             <button
@@ -103,7 +98,6 @@ export function Topbar() {
 
         <div className="flex-1" />
 
-        {/* Upload Excel button */}
         {canUpload && (
           <button
             onClick={() => setShowUpload(true)}
@@ -115,13 +109,22 @@ export function Topbar() {
           </button>
         )}
 
-        {/* Mobile chat toggle */}
-        <button onClick={() => setChatOpen(true)} className="xl:hidden text-muted-foreground hover:text-foreground">
-          <MessageCircle className="h-5 w-5" />
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+            chatOpen
+              ? "bg-card text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-card"
+          )}
+          title={chatOpen ? "Ocultar chat" : "Mostrar chat"}
+          aria-label={chatOpen ? "Ocultar chat" : "Mostrar chat"}
+        >
+          <MessageCircle className="h-4 w-4" />
+          <span className="hidden md:inline">Chat</span>
         </button>
       </header>
 
-      {/* Excel upload modal */}
       <ModalExcelUpload
         open={showUpload}
         onClose={() => setShowUpload(false)}
