@@ -479,15 +479,16 @@ export default function ReportesPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--bg-border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--text-3))" }} />
-              <YAxis tickFormatter={(v: number) => formatMontoAbreviado(v)} tick={{ fontSize: 10, fill: "hsl(var(--text-3))" }} width={55} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+              <YAxis tickFormatter={(v: number) => formatMontoAbreviado(v)} tick={{ fontSize: 10, fill: "#CCCCCC" }} width={55} />
               <RTooltip
-                contentStyle={{ background: "hsl(var(--bg-surface))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 11 }}
+                contentStyle={{ background: "hsl(var(--bg-surface))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 11, color: "#FFFFFF" }}
                 formatter={(v: number) => formatMonto(v)}
               />
+              <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
               <Area type="monotone" dataKey="Ingresos" stroke="hsl(142,71%,45%)" fill="url(#gradIng)" strokeWidth={2} />
               <Area type="monotone" dataKey="Egresos" stroke="hsl(0,84%,60%)" fill="url(#gradEgr)" strokeWidth={2} />
-              <Line type="monotone" dataKey="Año Ant." stroke="hsl(var(--text-4))" strokeWidth={1} strokeDasharray="4 4" dot={false} />
+              <Line type="monotone" dataKey="Año Ant." stroke="#888888" strokeWidth={1} strokeDasharray="4 4" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
