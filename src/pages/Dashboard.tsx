@@ -313,13 +313,13 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={topCats} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
-              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#888888" }} />
-              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "#888888" }} />
+              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
               <Tooltip
                 contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number) => [formatMonto(v, true), "Total"]}
               />
-              <Bar dataKey="total" fill="#EF4444" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total" name="Total" fill="#EF4444" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>

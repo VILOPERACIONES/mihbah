@@ -534,13 +534,14 @@ export default function ReportesPage() {
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--bg-border))" />
-            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--text-3))" }} />
-            <YAxis tickFormatter={(v: number) => `${v.toFixed(0)}%`} tick={{ fontSize: 10, fill: "hsl(var(--text-3))" }} width={40} />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+            <YAxis tickFormatter={(v: number) => `${v.toFixed(0)}%`} tick={{ fontSize: 10, fill: "#CCCCCC" }} width={40} />
             <RTooltip
-              contentStyle={{ background: "hsl(var(--bg-surface))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 11 }}
+              contentStyle={{ background: "hsl(var(--bg-surface))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 11, color: "#FFFFFF" }}
               formatter={(v: number) => `${v.toFixed(1)}%`}
             />
-            <Bar dataKey="Margen" radius={[4, 4, 0, 0]}>
+            <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
+            <Bar dataKey="Margen" name="Margen %" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, i) => (
                 <Cell key={i} fill={entry.Margen >= 0 ? "hsl(142,71%,45%)" : "hsl(0,84%,60%)"} opacity={0.8} />
               ))}

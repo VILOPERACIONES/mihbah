@@ -200,13 +200,14 @@ export default function FlujoPage() {
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={data.map((r) => ({ periodo: `${MESES[r.mes - 1]} ${r.anio}`, balance: r.balanceFinal }))}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--bg-border))" />
-                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+                <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
                 <Tooltip
-                  contentStyle={{ background: "hsl(var(--bg-card))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 12 }}
+                  contentStyle={{ background: "hsl(var(--bg-card))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                   formatter={(v: number) => [formatMonto(v, true), "Balance"]}
                 />
-                <Area type="monotone" dataKey="balance" stroke="#6366f1" fill="#6366f1" fillOpacity={0.15} strokeWidth={2} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
+                <Area type="monotone" dataKey="balance" name="Balance Final" stroke="#6366f1" fill="#6366f1" fillOpacity={0.15} strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </Card>
