@@ -345,13 +345,21 @@ export default function ReportesPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard
-          title="Ingresos Totales" value={formatMontoAbreviado(totals.ingresos)}
-          icon={TrendingUp} accent="primary"
-          trend={pctChange(totals.ingresos, prevTotals.ingresos)}
-          trendLabel={`vs ${Number(anio) - 1}`}
-          subtitle={`${rows.filter(r => r.ingresos > 0).length} meses con ingresos`}
-        />
+        {/* Ingresos - Clickable/Expandable */}
+        <div className="relative">
+          <div onClick={() => setIngresosExpanded(!ingresosExpanded)} className="cursor-pointer">
+            <KPICard
+              title="Ingresos Totales" value={formatMontoAbreviado(totals.ingresos)}
+              icon={TrendingUp} accent="primary"
+              trend={pctChange(totals.ingresos, prevTotals.ingresos)}
+              trendLabel={`vs ${Number(anio) - 1}`}
+              subtitle={`${rows.filter(r => r.ingresos > 0).length} meses con ingresos`}
+            />
+          </div>
+          <div className="absolute top-2 right-2 z-10">
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", ingresosExpanded && "rotate-180")} />
+          </div>
+        </div>
         <KPICard
           title="Egresos Totales" value={formatMontoAbreviado(totals.egresos)}
           icon={TrendingDown} accent="destructive"
@@ -370,6 +378,76 @@ export default function ReportesPage() {
           subtitle={totals.margen >= 15 ? "Saludable" : totals.margen >= 0 ? "Ajustado" : "En pérdida"}
         />
       </div>
+
+      {/* Ingresos Breakdown Panel */}
+      {ingresosExpanded && (
+        <Card className="border-border overflow-hidden animate-in slide-in-from-top-2 duration-200" style={{ background: "hsl(var(--bg-card))" }}>
+          <div className="px-4 py-2.5 border-b border-border flex items-center justify-between" style={{ background: "hsl(var(--bg-surface))" }}>
+            <p className="text-xs font-semibold flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-primary" />
+              Desglose de Ingresos
+            </p>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIngresosExpanded(false)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4">
+            {/* Venta de Proyecto */}
+            <div
+              className="rounded-lg border border-border p-4 hover:border-primary/40 transition-colors cursor-pointer group"
+              style={{ background: "hsl(var(--bg-surface))" }}
+              onClick={() => handleIngresosDrill(CATS_VENTA_PROYECTO, "Venta de Proyecto")}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-md flex items-center justify-center bg-primary/15">
+                    <Target className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Venta de Proyecto</p>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <p className="text-lg font-bold font-money text-primary">{formatMontoAbreviado(ingresosBreakdown.ventaProyecto)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {totals.ingresos > 0 ? `${((ingresosBreakdown.ventaProyecto / totals.ingresos) * 100).toFixed(1)}% del total` : "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Categorías: {CATS_VENTA_PROYECTO.join(", ")}</p>
+            </div>
+
+            {/* Levantamiento de Capital */}
+            <div
+              className="rounded-lg border border-border p-4 hover:border-primary/40 transition-colors cursor-pointer group"
+              style={{ background: "hsl(var(--bg-surface))" }}
+              onClick={() => handleIngresosDrill(CATS_LEVANTAMIENTO, "Levantamiento de Capital")}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-md flex items-center justify-center bg-warning/15">
+                    <Shield className="h-3.5 w-3.5 text-warning" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Levantamiento de Capital</p>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <p className="text-lg font-bold font-money text-warning">{formatMontoAbreviado(ingresosBreakdown.levantamientoCapital)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {totals.ingresos > 0 ? `${((ingresosBreakdown.levantamientoCapital / totals.ingresos) * 100).toFixed(1)}% del total` : "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Categorías: {CATS_LEVANTAMIENTO.join(", ")}</p>
+            </div>
+          </div>
+          {/* Summary bar */}
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="font-medium text-foreground">Fórmula:</span>
+              Ingresos Totales = Venta de Proyecto ({formatMontoAbreviado(ingresosBreakdown.ventaProyecto)}) + Levantamiento de Capital ({formatMontoAbreviado(ingresosBreakdown.levantamientoCapital)})
+              {ingresosBreakdown.ventaProyecto + ingresosBreakdown.levantamientoCapital < totals.ingresos && (
+                <span> + Otros ({formatMontoAbreviado(totals.ingresos - ingresosBreakdown.ventaProyecto - ingresosBreakdown.levantamientoCapital)})</span>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Alerts */}
       {alerts.length > 0 && (
