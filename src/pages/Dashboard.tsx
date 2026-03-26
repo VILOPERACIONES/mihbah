@@ -105,7 +105,7 @@ export default function DashboardPage() {
 
       setPeriodoLabel(`${MESES[mes]} ${anio}`);
 
-      const [kpiRes, flujoRes, catRes, recRes] = await Promise.all([
+      const [kpiRes, flujoRes, catRes, recRes, cuentasRes] = await Promise.all([
         supabase.rpc("get_kpis_mes", { _anio: anio, _mes: mes, _empresa: empresaFilter }),
         supabase.rpc("get_flujo_mensual", { _anio_desde: anio - 2, _empresa: empresaFilter }),
         supabase.rpc("get_top_categorias", { _anio: anio, _mes: mes, _limite: 8, _empresa: empresaFilter }),
@@ -119,6 +119,7 @@ export default function DashboardPage() {
           if (empresaFilter) q = q.eq("empresa", empresaFilter);
           return q;
         })(),
+        supabase.rpc("get_cuentas_pendientes_totales" as any, { _empresa: empresaFilter }),
       ]);
 
       if (kpiRes.data) {
