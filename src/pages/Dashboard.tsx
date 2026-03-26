@@ -115,7 +115,7 @@ export default function DashboardPage() {
           if (empresaFilter) q = q.eq("empresa", empresaFilter);
           return q;
         })(),
-        supabase.rpc("get_cuentas_pendientes_totales" as any, { _empresa: empresaFilter }),
+        supabase.rpc("get_cxc_cxp_dashboard" as any, { _empresa: empresaFilter }),
       ]);
 
       if (kpiRes.data) {
