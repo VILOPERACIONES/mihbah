@@ -59,7 +59,31 @@ export default function MovimientosPage() {
     setLoading(false);
   }, [empresaActiva, tipoFilter, filtroBusqueda, page]);
 
+  const loadCards = useCallback(async () => {
+    const baseFilter = (q: any) => {
+      let r = q.eq("activo", true).eq("tipo", "INGRESO");
+      if (empresaActiva !== "TODAS") r = r.eq("empresa", empresaActiva);
+      return r;
+    };
+
+    const [ventasRes, inversionRes] = await Promise.all([
+      baseFilter(supabase.from("movimientos").select("monto", { count: "exact" }))
+        .eq("categoria", "CLIENTES"),
+      baseFilter(supabase.from("movimientos").select("monto", { count: "exact" }))
+        .in("categoria", ["ACCIONISTAS", "SOCIOS", "EMPRESA"]),
+    ]);
+
+    const sum = (rows: any[] | null) => (rows ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
+    setCardData({
+      ventas: sum(ventasRes.data),
+      ventasCount: ventasRes.count ?? 0,
+      inversion: sum(inversionRes.data),
+      inversionCount: inversionRes.count ?? 0,
+    });
+  }, [empresaActiva]);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadCards(); }, [loadCards]);
   useEffect(() => { setPage(0); }, [empresaActiva, tipoFilter, filtroBusqueda]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
