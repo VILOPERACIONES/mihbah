@@ -6,7 +6,8 @@ import { TipoChip } from "@/components/shared/TipoChip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar, FileCheck, FileWarning } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar, FileCheck, FileWarning, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -64,6 +65,13 @@ export default function DashboardPage() {
   const [periodsLoaded, setPeriodsLoaded] = useState(false);
   const [cuentas, setCuentas] = useState<CuentasDashboard | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = () => {
+    setPeriodsLoaded(false);
+    setLoading(true);
+    setRefreshKey((k) => k + 1);
+  };
 
   useEffect(() => {
     async function loadPeriods() {
@@ -79,7 +87,7 @@ export default function DashboardPage() {
       setPeriodsLoaded(true);
     }
     loadPeriods();
-  }, []);
+  }, [refreshKey]);
 
   const availableYears = useMemo(() =>
     [...new Set(availablePeriods.map(p => p.anio))].sort((a, b) => b - a),
@@ -212,6 +220,9 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} title="Refrescar datos">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <Select value={String(selectedMes)} onValueChange={(v) => setSelectedMes(Number(v))}>
             <SelectTrigger className="w-[120px] h-8 text-xs">
