@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar, FileCheck, FileWarning, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { MovimientoDetailSheet } from "@/components/movimientos/MovimientoDetailSheet";
 
