@@ -294,15 +294,16 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={flujo}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#888888" }} />
-              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#888888" }} />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
               <Tooltip
                 contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number, name: string) => [formatMonto(v, true), name === "ingresos" ? "Ingresos" : name === "salidas" ? "Egresos" : "Balance"]}
               />
-              <Area type="monotone" dataKey="ingresos" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="salidas" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="balance" stroke="#4ADE80" fill="none" strokeWidth={2} strokeDasharray="4 2" />
+              <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
+              <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="salidas" name="Egresos" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="balance" name="Balance" stroke="#4ADE80" fill="none" strokeWidth={2} strokeDasharray="4 2" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
