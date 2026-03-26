@@ -90,6 +90,20 @@ export default function MovimientosPage() {
 
   return (
     <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingreso por Ventas</p>
+          <p className="text-2xl font-semibold text-[hsl(var(--jade))]">{formatMonto(cardData.ventas)}</p>
+          <p className="text-xs text-muted-foreground">{cardData.ventasCount.toLocaleString()} movimientos · Categoría: CLIENTES</p>
+        </Card>
+        <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingreso de Inversión</p>
+          <p className="text-2xl font-semibold text-[hsl(var(--turquesa))]">{formatMonto(cardData.inversion)}</p>
+          <p className="text-xs text-muted-foreground">{cardData.inversionCount.toLocaleString()} movimientos · ACCIONISTAS, SOCIOS, EMPRESA</p>
+        </Card>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Movimientos</h1>
