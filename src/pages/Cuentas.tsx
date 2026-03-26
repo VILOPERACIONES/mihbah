@@ -21,30 +21,18 @@ export default function CuentasPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      let query = supabase
-        .from("movimientos")
-        .select("cuenta, monto")
-        .eq("activo", true)
-        .not("cuenta", "is", null);
+      const args: { _empresa?: string } = {};
+      if (empresaActiva !== "TODAS") args._empresa = empresaActiva;
 
-      if (empresaActiva !== "TODAS") query = query.eq("empresa", empresaActiva);
-      const { data } = await query;
+      const { data } = await supabase.rpc("get_cuentas_resumen", args);
 
       if (data) {
-        const mapa = new Map<string, { saldo: number; count: number }>();
-        data.forEach((m: { cuenta: string | null; monto: number }) => {
-          const c = m.cuenta ?? "";
-          if (!c) return;
-          if (!mapa.has(c)) mapa.set(c, { saldo: 0, count: 0 });
-          const e = mapa.get(c)!;
-          e.saldo += Number(m.monto);
-          e.count++;
-        });
-
         setCuentas(
-          [...mapa.entries()]
-            .map(([cuenta, d]) => ({ cuenta, saldo: d.saldo, count: d.count }))
-            .sort((a, b) => b.saldo - a.saldo)
+          (data as CuentaData[]).map((d) => ({
+            cuenta: d.cuenta,
+            saldo: Number(d.saldo),
+            count: Number(d.count),
+          }))
         );
       }
       setLoading(false);
