@@ -643,8 +643,8 @@ export default function ReportesPage() {
         </div>
       </Card>
 
-      {/* Drill-down panel */}
-      {drillItems.length > 0 && (
+      {/* Drill-down panel (monthly) */}
+      {drillItems.length > 0 && expandedMonth && (
         <DrillPanel items={drillItems} title={drillTitle} onClose={() => { setExpandedMonth(null); setDrillItems([]); }} onItemClick={(id) => setDetailId(id)} />
       )}
 
