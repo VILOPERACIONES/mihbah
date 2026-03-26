@@ -67,6 +67,12 @@ export default function DashboardPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const handleRefresh = () => {
+    setPeriodsLoaded(false);
+    setLoading(true);
+    setRefreshKey((k) => k + 1);
+  };
+
   useEffect(() => {
     async function loadPeriods() {
       const [periodsRes, latestRes] = await Promise.all([
@@ -81,7 +87,7 @@ export default function DashboardPage() {
       setPeriodsLoaded(true);
     }
     loadPeriods();
-  }, []);
+  }, [refreshKey]);
 
   const availableYears = useMemo(() =>
     [...new Set(availablePeriods.map(p => p.anio))].sort((a, b) => b - a),
