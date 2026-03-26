@@ -49,6 +49,14 @@ interface DrillItem {
   categoria: string | null;
 }
 
+interface IngresosBreakdown {
+  ventaProyecto: number;
+  levantamientoCapital: number;
+}
+
+const CATS_VENTA_PROYECTO = ["CLIENTES"];
+const CATS_LEVANTAMIENTO = ["ACCIONISTAS", "SOCIOS", "EMPRESA"];
+
 // ── Strategic KPI Card ─────────────────────────────────────
 function KPICard({ title, value, subtitle, icon: Icon, trend, trendLabel, accent = "primary" }: {
   title: string; value: string; subtitle?: string; icon: React.ElementType;
@@ -146,6 +154,8 @@ export default function ReportesPage() {
   const [drillItems, setDrillItems] = useState<DrillItem[]>([]);
   const [drillTitle, setDrillTitle] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [ingresosBreakdown, setIngresosBreakdown] = useState<IngresosBreakdown>({ ventaProyecto: 0, levantamientoCapital: 0 });
+  const [ingresosExpanded, setIngresosExpanded] = useState(false);
 
   const empresa = empresaActiva === "TODAS" ? null : empresaActiva;
 
@@ -157,10 +167,22 @@ export default function ReportesPage() {
       setDrillItems([]);
 
       const numAnio = Number(anio);
-      const [{ data: curr }, { data: prev }, { data: cats }] = await Promise.all([
+      const [{ data: curr }, { data: prev }, { data: cats }, { data: ventaData }, { data: levData }] = await Promise.all([
         supabase.rpc("get_flujo_mensual", { _anio_desde: numAnio, _empresa: empresa } as any),
         supabase.rpc("get_flujo_mensual", { _anio_desde: numAnio - 1, _empresa: empresa } as any),
         supabase.rpc("get_top_categorias", { _anio: numAnio, _mes: new Date().getMonth() + 1, _limite: 10, _empresa: empresa } as any),
+        // Income breakdown: Venta de Proyecto
+        supabase.from("movimientos")
+          .select("monto")
+          .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", numAnio)
+          .in("categoria", CATS_VENTA_PROYECTO)
+          .then(r => r),
+        // Income breakdown: Levantamiento de Capital
+        supabase.from("movimientos")
+          .select("monto")
+          .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", numAnio)
+          .in("categoria", CATS_LEVANTAMIENTO)
+          .then(r => r),
       ]);
 
       const parseRows = (data: any[], targetYear: number): MonthData[] => {
@@ -187,6 +209,11 @@ export default function ReportesPage() {
         categoria: c.categoria, total: Number(c.total),
         pct: totalEgr > 0 ? (Number(c.total) / totalEgr) * 100 : 0,
       })));
+
+      // Income breakdown totals
+      const ventaTotal = (ventaData ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
+      const levTotal = (levData ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
+      setIngresosBreakdown({ ventaProyecto: ventaTotal, levantamientoCapital: levTotal });
 
       setLoading(false);
     }
@@ -253,7 +280,20 @@ export default function ReportesPage() {
     setDrillTitle(`${MESES_FULL[mes - 1]} ${anio}${tipo ? ` — ${tipo}` : ""}`);
   }, [expandedMonth, anio, empresa]);
 
-  // Export to PDF
+  // Drill-down for income category breakdown
+  const handleIngresosDrill = useCallback(async (categorias: string[], label: string) => {
+    let query = supabase.from("movimientos")
+      .select("id, fecha, empresa, concepto, monto, tipo, categoria")
+      .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", Number(anio))
+      .in("categoria", categorias)
+      .order("monto", { ascending: false });
+    if (empresa) query = query.eq("empresa", empresa);
+    const { data } = await query.limit(200);
+    setDrillItems((data as DrillItem[]) ?? []);
+    setDrillTitle(`Ingresos — ${label} (${anio})`);
+    setExpandedMonth(null);
+  }, [anio, empresa]);
+
   const exportPDF = useCallback(() => {
     generateReportPDF({
       anio,
@@ -305,13 +345,21 @@ export default function ReportesPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard
-          title="Ingresos Totales" value={formatMontoAbreviado(totals.ingresos)}
-          icon={TrendingUp} accent="primary"
-          trend={pctChange(totals.ingresos, prevTotals.ingresos)}
-          trendLabel={`vs ${Number(anio) - 1}`}
-          subtitle={`${rows.filter(r => r.ingresos > 0).length} meses con ingresos`}
-        />
+        {/* Ingresos - Clickable/Expandable */}
+        <div className="relative">
+          <div onClick={() => setIngresosExpanded(!ingresosExpanded)} className="cursor-pointer">
+            <KPICard
+              title="Ingresos Totales" value={formatMontoAbreviado(totals.ingresos)}
+              icon={TrendingUp} accent="primary"
+              trend={pctChange(totals.ingresos, prevTotals.ingresos)}
+              trendLabel={`vs ${Number(anio) - 1}`}
+              subtitle={`${rows.filter(r => r.ingresos > 0).length} meses con ingresos`}
+            />
+          </div>
+          <div className="absolute top-2 right-2 z-10">
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", ingresosExpanded && "rotate-180")} />
+          </div>
+        </div>
         <KPICard
           title="Egresos Totales" value={formatMontoAbreviado(totals.egresos)}
           icon={TrendingDown} accent="destructive"
@@ -330,6 +378,76 @@ export default function ReportesPage() {
           subtitle={totals.margen >= 15 ? "Saludable" : totals.margen >= 0 ? "Ajustado" : "En pérdida"}
         />
       </div>
+
+      {/* Ingresos Breakdown Panel */}
+      {ingresosExpanded && (
+        <Card className="border-border overflow-hidden animate-in slide-in-from-top-2 duration-200" style={{ background: "hsl(var(--bg-card))" }}>
+          <div className="px-4 py-2.5 border-b border-border flex items-center justify-between" style={{ background: "hsl(var(--bg-surface))" }}>
+            <p className="text-xs font-semibold flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-primary" />
+              Desglose de Ingresos
+            </p>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIngresosExpanded(false)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4">
+            {/* Venta de Proyecto */}
+            <div
+              className="rounded-lg border border-border p-4 hover:border-primary/40 transition-colors cursor-pointer group"
+              style={{ background: "hsl(var(--bg-surface))" }}
+              onClick={() => handleIngresosDrill(CATS_VENTA_PROYECTO, "Venta de Proyecto")}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-md flex items-center justify-center bg-primary/15">
+                    <Target className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Venta de Proyecto</p>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <p className="text-lg font-bold font-money text-primary">{formatMontoAbreviado(ingresosBreakdown.ventaProyecto)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {totals.ingresos > 0 ? `${((ingresosBreakdown.ventaProyecto / totals.ingresos) * 100).toFixed(1)}% del total` : "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Categorías: {CATS_VENTA_PROYECTO.join(", ")}</p>
+            </div>
+
+            {/* Levantamiento de Capital */}
+            <div
+              className="rounded-lg border border-border p-4 hover:border-primary/40 transition-colors cursor-pointer group"
+              style={{ background: "hsl(var(--bg-surface))" }}
+              onClick={() => handleIngresosDrill(CATS_LEVANTAMIENTO, "Levantamiento de Capital")}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-md flex items-center justify-center bg-warning/15">
+                    <Shield className="h-3.5 w-3.5 text-warning" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Levantamiento de Capital</p>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <p className="text-lg font-bold font-money text-warning">{formatMontoAbreviado(ingresosBreakdown.levantamientoCapital)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {totals.ingresos > 0 ? `${((ingresosBreakdown.levantamientoCapital / totals.ingresos) * 100).toFixed(1)}% del total` : "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Categorías: {CATS_LEVANTAMIENTO.join(", ")}</p>
+            </div>
+          </div>
+          {/* Summary bar */}
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="font-medium text-foreground">Fórmula:</span>
+              Ingresos Totales = Venta de Proyecto ({formatMontoAbreviado(ingresosBreakdown.ventaProyecto)}) + Levantamiento de Capital ({formatMontoAbreviado(ingresosBreakdown.levantamientoCapital)})
+              {ingresosBreakdown.ventaProyecto + ingresosBreakdown.levantamientoCapital < totals.ingresos && (
+                <span> + Otros ({formatMontoAbreviado(totals.ingresos - ingresosBreakdown.ventaProyecto - ingresosBreakdown.levantamientoCapital)})</span>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Alerts */}
       {alerts.length > 0 && (
