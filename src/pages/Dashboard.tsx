@@ -251,14 +251,7 @@ export default function DashboardPage() {
             <span className="text-xs text-muted-foreground font-medium">Cuentas por Cobrar</span>
           </div>
           <MontoDisplay monto={cuentas?.cxc ?? 0} tipo="INGRESO" size="xl" />
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-muted-foreground">{cuentas?.conteo_cxc ?? 0} pendientes</span>
-            {(cuentas?.cxc_vencidas ?? 0) > 0 && (
-              <span className="text-xs text-[hsl(var(--destructive))] font-medium">
-                {formatMonto(cuentas!.cxc_vencidas, true)} vencidas
-              </span>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground mt-2">Basado en ingresos de clientes registrados</p>
         </Card>
 
         <Card className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
@@ -267,14 +260,7 @@ export default function DashboardPage() {
             <span className="text-xs text-muted-foreground font-medium">Cuentas por Pagar</span>
           </div>
           <MontoDisplay monto={cuentas?.cxp ?? 0} tipo="SALIDA" size="xl" />
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-muted-foreground">{cuentas?.conteo_cxp ?? 0} pendientes</span>
-            {(cuentas?.cxp_vencidas ?? 0) > 0 && (
-              <span className="text-xs text-[hsl(var(--destructive))] font-medium">
-                {formatMonto(cuentas!.cxp_vencidas, true)} vencidas
-              </span>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground mt-2">Basado en obligaciones y filiales registradas</p>
         </Card>
       </div>
 
