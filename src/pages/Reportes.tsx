@@ -455,6 +455,7 @@ export default function ReportesPage() {
       )}
 
       {/* Alerts */}
+      {alerts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {alerts.map((a, i) => <AlertCard key={i} {...a} />)}
         </div>
