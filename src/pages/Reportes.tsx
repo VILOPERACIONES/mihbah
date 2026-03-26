@@ -167,10 +167,22 @@ export default function ReportesPage() {
       setDrillItems([]);
 
       const numAnio = Number(anio);
-      const [{ data: curr }, { data: prev }, { data: cats }] = await Promise.all([
+      const [{ data: curr }, { data: prev }, { data: cats }, { data: ventaData }, { data: levData }] = await Promise.all([
         supabase.rpc("get_flujo_mensual", { _anio_desde: numAnio, _empresa: empresa } as any),
         supabase.rpc("get_flujo_mensual", { _anio_desde: numAnio - 1, _empresa: empresa } as any),
         supabase.rpc("get_top_categorias", { _anio: numAnio, _mes: new Date().getMonth() + 1, _limite: 10, _empresa: empresa } as any),
+        // Income breakdown: Venta de Proyecto
+        supabase.from("movimientos")
+          .select("monto")
+          .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", numAnio)
+          .in("categoria", CATS_VENTA_PROYECTO)
+          .then(r => r),
+        // Income breakdown: Levantamiento de Capital
+        supabase.from("movimientos")
+          .select("monto")
+          .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", numAnio)
+          .in("categoria", CATS_LEVANTAMIENTO)
+          .then(r => r),
       ]);
 
       const parseRows = (data: any[], targetYear: number): MonthData[] => {
@@ -197,6 +209,11 @@ export default function ReportesPage() {
         categoria: c.categoria, total: Number(c.total),
         pct: totalEgr > 0 ? (Number(c.total) / totalEgr) * 100 : 0,
       })));
+
+      // Income breakdown totals
+      const ventaTotal = (ventaData ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
+      const levTotal = (levData ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
+      setIngresosBreakdown({ ventaProyecto: ventaTotal, levantamientoCapital: levTotal });
 
       setLoading(false);
     }
