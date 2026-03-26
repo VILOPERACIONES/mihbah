@@ -151,6 +151,19 @@ export default function DashboardPage() {
       }
 
       if (recRes.data) setRecientes(recRes.data as Movimiento[]);
+
+      if (cuentasRes.data) {
+        const c = cuentasRes.data as any;
+        setCuentas({
+          cxc: Number(c.cxc) || 0,
+          cxp: Number(c.cxp) || 0,
+          cxc_vencidas: Number(c.cxc_vencidas) || 0,
+          cxp_vencidas: Number(c.cxp_vencidas) || 0,
+          conteo_cxc: Number(c.conteo_cxc) || 0,
+          conteo_cxp: Number(c.conteo_cxp) || 0,
+        });
+      }
+
       setLoading(false);
     }
     load();
