@@ -280,7 +280,20 @@ export default function ReportesPage() {
     setDrillTitle(`${MESES_FULL[mes - 1]} ${anio}${tipo ? ` — ${tipo}` : ""}`);
   }, [expandedMonth, anio, empresa]);
 
-  // Export to PDF
+  // Drill-down for income category breakdown
+  const handleIngresosDrill = useCallback(async (categorias: string[], label: string) => {
+    let query = supabase.from("movimientos")
+      .select("id, fecha, empresa, concepto, monto, tipo, categoria")
+      .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", Number(anio))
+      .in("categoria", categorias)
+      .order("monto", { ascending: false });
+    if (empresa) query = query.eq("empresa", empresa);
+    const { data } = await query.limit(200);
+    setDrillItems((data as DrillItem[]) ?? []);
+    setDrillTitle(`Ingresos — ${label} (${anio})`);
+    setExpandedMonth(null);
+  }, [anio, empresa]);
+
   const exportPDF = useCallback(() => {
     generateReportPDF({
       anio,
