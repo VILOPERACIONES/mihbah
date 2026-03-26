@@ -36,31 +36,36 @@ export function AppShell() {
           </>
         )}
 
-        {/* Main + Chat resizable area (desktop) */}
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="flex-1 hidden xl:flex"
-        >
-          <ResizablePanel defaultSize={70} minSize={40}>
-            <div className="flex flex-col h-full overflow-hidden">
-              <Topbar />
-              <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
-                <Outlet />
-              </main>
-            </div>
-          </ResizablePanel>
+        {/* Main + optional Chat resizable area */}
+        {chatOpen ? (
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="flex-1 hidden lg:flex"
+          >
+            <ResizablePanel defaultSize={70} minSize={40}>
+              <div className="flex flex-col h-full overflow-hidden">
+                <Topbar />
+                <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
+                  <Outlet />
+                </main>
+              </div>
+            </ResizablePanel>
 
-          <ResizableHandle withHandle />
+            <ResizableHandle withHandle />
 
-          <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-            <div className="h-full flex flex-col bg-[hsl(var(--bg-surface))]">
-              <ChatPanel />
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+            <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+              <div className="h-full flex flex-col bg-[hsl(var(--bg-surface))]">
+                <ChatPanel onClose={() => setChatOpen(false)} />
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : null}
 
-        {/* Main area without chat (below xl) */}
-        <div className="flex-1 flex flex-col overflow-hidden xl:hidden">
+        {/* Main area when chat is closed (or on mobile) */}
+        <div className={cn(
+          "flex-1 flex flex-col overflow-hidden",
+          chatOpen ? "lg:hidden" : ""
+        )}>
           <Topbar />
           <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
             <Outlet />
