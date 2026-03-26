@@ -75,8 +75,8 @@ export function AppShell() {
         {/* Mobile chat overlay */}
         {chatOpen && (
           <>
-            <div className="fixed inset-0 bg-black/60 z-40 xl:hidden" onClick={() => setChatOpen(false)} />
-            <aside className="fixed inset-y-0 right-0 w-[340px] max-w-[90vw] z-50 flex flex-col border-l border-border bg-[hsl(var(--bg-surface))] xl:hidden">
+            <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setChatOpen(false)} />
+            <aside className="fixed inset-y-0 right-0 w-[340px] max-w-[90vw] z-50 flex flex-col border-l border-border bg-[hsl(var(--bg-surface))] lg:hidden">
               <ChatPanel onClose={() => setChatOpen(false)} />
             </aside>
           </>
