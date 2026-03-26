@@ -88,6 +88,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cuentas_pendientes: {
+        Row: {
+          created_at: string
+          descripcion: string
+          empresa: string
+          fecha_emision: string
+          fecha_pago: string | null
+          fecha_vencimiento: string | null
+          id: string
+          monto: number
+          pagado: boolean
+          referencia: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string
+          empresa: string
+          fecha_emision?: string
+          fecha_pago?: string | null
+          fecha_vencimiento?: string | null
+          id?: string
+          monto: number
+          pagado?: boolean
+          referencia?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string
+          empresa?: string
+          fecha_emision?: string
+          fecha_pago?: string | null
+          fecha_vencimiento?: string | null
+          id?: string
+          monto?: number
+          pagado?: boolean
+          referencia?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       excel_uploads: {
         Row: {
           created_at: string
@@ -291,6 +336,10 @@ export type Database = {
           anio: number
           mes: number
         }[]
+      }
+      get_cuentas_pendientes_totales: {
+        Args: { _empresa?: string }
+        Returns: Json
       }
       get_flujo_mensual: {
         Args: { _anio_desde: number; _empresa?: string }
