@@ -33,7 +33,7 @@ export default function FlujoPage() {
       setLoading(true);
       let query = supabase
         .from("movimientos")
-        .select("anio, mes, tipo, monto")
+        .select("anio, mes, monto")
         .eq("activo", true)
         .gte("anio", Number(anioDesde))
         .lte("anio", Number(anioHasta));
@@ -42,29 +42,31 @@ export default function FlujoPage() {
       const { data: movs } = await query;
 
       if (movs) {
-        const mapa = new Map<string, { anio: number; mes: number; ingresos: number; salidas: number }>();
-        movs.forEach((m: { anio: number; mes: number; tipo: string; monto: number }) => {
+        // Aggregate net (SUM of monto) per month — includes ALL tipos
+        const mapa = new Map<string, { anio: number; mes: number; neto: number; ingresos: number; salidas: number }>();
+        movs.forEach((m: { anio: number; mes: number; monto: number }) => {
           const key = `${m.anio}-${String(m.mes).padStart(2, "0")}`;
-          if (!mapa.has(key)) mapa.set(key, { anio: m.anio, mes: m.mes, ingresos: 0, salidas: 0 });
+          if (!mapa.has(key)) mapa.set(key, { anio: m.anio, mes: m.mes, neto: 0, ingresos: 0, salidas: 0 });
           const entry = mapa.get(key)!;
-          if (m.tipo === "INGRESO") entry.ingresos += Number(m.monto);
-          if (m.tipo === "SALIDA") entry.salidas += Math.abs(Number(m.monto));
+          const monto = Number(m.monto);
+          entry.neto += monto;
+          if (monto >= 0) entry.ingresos += monto;
+          else entry.salidas += Math.abs(monto);
         });
 
-        let balance = 0;
+        let acumulado = 0;
         const rows = [...mapa.entries()]
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([, e]) => {
-            const dif = e.ingresos - e.salidas;
             const row: FlujoRow = {
               anio: e.anio, mes: e.mes,
-              balanceInicial: balance,
+              balanceInicial: acumulado,
               ingresos: e.ingresos,
               salidas: e.salidas,
-              diferencia: dif,
-              balanceFinal: balance + dif,
+              diferencia: e.neto,
+              balanceFinal: acumulado + e.neto,
             };
-            balance += dif;
+            acumulado += e.neto;
             return row;
           });
         setData(rows);
