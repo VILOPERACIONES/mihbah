@@ -49,6 +49,14 @@ interface DrillItem {
   categoria: string | null;
 }
 
+interface IngresosBreakdown {
+  ventaProyecto: number;
+  levantamientoCapital: number;
+}
+
+const CATS_VENTA_PROYECTO = ["CLIENTES"];
+const CATS_LEVANTAMIENTO = ["ACCIONISTAS", "SOCIOS", "EMPRESA"];
+
 // ── Strategic KPI Card ─────────────────────────────────────
 function KPICard({ title, value, subtitle, icon: Icon, trend, trendLabel, accent = "primary" }: {
   title: string; value: string; subtitle?: string; icon: React.ElementType;
