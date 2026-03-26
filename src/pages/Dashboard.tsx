@@ -41,6 +41,23 @@ interface Movimiento {
   categoria: string | null;
   concepto: string;
   monto: number;
+interface Movimiento {
+  id: string;
+  fecha: string;
+  empresa: string;
+  tipo: string;
+  categoria: string | null;
+  concepto: string;
+  monto: number;
+}
+
+interface CuentasPendientes {
+  cxc: number;
+  cxp: number;
+  cxc_vencidas: number;
+  cxp_vencidas: number;
+  conteo_cxc: number;
+  conteo_cxp: number;
 }
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
