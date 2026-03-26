@@ -92,7 +92,20 @@ export default function DashboardPage() {
   );
 
   useEffect(() => {
-    if (!periodsLoaded || !selectedAnio || !selectedMes) return;
+    if (!periodsLoaded) return;
+
+    // No periods at all — show empty state immediately
+    if (!selectedAnio || !selectedMes) {
+      setKpis({ ingresos: 0, salidas: 0, resultado: 0, margen: 0, conteoIngresos: 0, conteoSalidas: 0 });
+      setFlujo([]);
+      setTopCats([]);
+      setRecientes([]);
+      setCuentas({ cxc: 0, cxp: 0 });
+      setPeriodoLabel("Sin datos");
+      setLoading(false);
+      return;
+    }
+
     async function load() {
       setLoading(true);
       const empresaFilter = empresaActiva !== "TODAS" ? empresaActiva : null;
