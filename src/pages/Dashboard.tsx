@@ -153,10 +153,6 @@ export default function DashboardPage() {
         setCuentas({
           cxc: Number(c.cxc) || 0,
           cxp: Number(c.cxp) || 0,
-          cxc_vencidas: Number(c.cxc_vencidas) || 0,
-          cxp_vencidas: Number(c.cxp_vencidas) || 0,
-          conteo_cxc: Number(c.conteo_cxc) || 0,
-          conteo_cxp: Number(c.conteo_cxp) || 0,
         });
       }
 
