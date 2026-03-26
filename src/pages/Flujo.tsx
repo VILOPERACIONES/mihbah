@@ -102,6 +102,83 @@ export default function FlujoPage() {
         <Skeleton className="h-96 rounded-xl" />
       ) : (
         <>
+          {/* Strategic Cash Flow Card */}
+          {data.length > 0 && (() => {
+            const latest = data[data.length - 1];
+            const prev = data.length > 1 ? data[data.length - 2] : null;
+            const totalIngresos = data.reduce((s, r) => s + r.ingresos, 0);
+            const totalSalidas = data.reduce((s, r) => s + r.salidas, 0);
+            const burnRate = data.length > 0 ? totalSalidas / data.length : 0;
+            const monthsRunway = burnRate > 0 ? latest.balanceFinal / burnRate : Infinity;
+            const balanceChange = prev ? latest.balanceFinal - prev.balanceFinal : 0;
+            const balancePct = prev && prev.balanceFinal !== 0 ? (balanceChange / Math.abs(prev.balanceFinal)) * 100 : 0;
+            const isPositive = latest.balanceFinal >= 0;
+            const isGrowing = balanceChange >= 0;
+
+            return (
+              <Card className="border-border rounded-xl overflow-hidden relative" style={{ background: "hsl(var(--bg-card))" }}>
+                <div className="absolute inset-0 opacity-5" style={{
+                  background: isPositive
+                    ? "linear-gradient(135deg, hsl(var(--jade)) 0%, transparent 60%)"
+                    : "linear-gradient(135deg, hsl(var(--destructive)) 0%, transparent 60%)"
+                }} />
+                <div className="relative p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className={cn(
+                      "p-2 rounded-lg",
+                      isPositive ? "bg-[hsl(var(--jade)/.15)]" : "bg-[hsl(var(--destructive)/.15)]"
+                    )}>
+                      <Wallet className={cn("h-5 w-5", isPositive ? "text-[hsl(var(--jade))]" : "text-destructive")} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Flujo Disponible</p>
+                      <p className="text-xs text-muted-foreground">{`${["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][latest.mes - 1]} ${latest.anio}`}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-6">
+                    {/* Balance actual */}
+                    <div>
+                      <p className={cn("text-3xl font-bold font-money", isPositive ? "text-[hsl(var(--jade))]" : "text-destructive")}>
+                        {formatMonto(latest.balanceFinal)}
+                      </p>
+                      <div className="flex items-center gap-1 mt-1">
+                        {isGrowing ? (
+                          <ArrowUpRight className="h-3.5 w-3.5 text-[hsl(var(--jade))]" />
+                        ) : (
+                          <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
+                        )}
+                        <span className={cn("text-xs font-medium", isGrowing ? "text-[hsl(var(--jade))]" : "text-destructive")}>
+                          {balancePct >= 0 ? "+" : ""}{balancePct.toFixed(1)}% vs mes anterior
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Burn rate */}
+                    <div className="border-l border-border pl-6">
+                      <p className="text-xs text-muted-foreground mb-1">Gasto Promedio / Mes</p>
+                      <p className="text-lg font-semibold font-money text-foreground">{formatMonto(burnRate)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">en {data.length} meses</p>
+                    </div>
+
+                    {/* Runway */}
+                    <div className="border-l border-border pl-6">
+                      <p className="text-xs text-muted-foreground mb-1">Runway Estimado</p>
+                      <p className={cn(
+                        "text-lg font-semibold",
+                        monthsRunway > 6 ? "text-[hsl(var(--jade))]" : monthsRunway > 3 ? "text-[hsl(var(--warning))]" : "text-destructive"
+                      )}>
+                        {monthsRunway === Infinity ? "∞" : `${monthsRunway.toFixed(1)} meses`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {monthsRunway > 6 ? "Saludable" : monthsRunway > 3 ? "Precaución" : "Crítico"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })()}
           <Card className="border-border rounded-xl overflow-hidden" style={{ background: "hsl(var(--bg-card))" }}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
