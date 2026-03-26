@@ -449,6 +449,11 @@ export default function ReportesPage() {
         </Card>
       )}
 
+      {/* Drill-down panel for income breakdown */}
+      {drillItems.length > 0 && !expandedMonth && (
+        <DrillPanel items={drillItems} title={drillTitle} onClose={() => { setDrillItems([]); }} onItemClick={(id) => setDetailId(id)} />
+      )}
+
       {/* Alerts */}
       {alerts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -638,8 +643,8 @@ export default function ReportesPage() {
         </div>
       </Card>
 
-      {/* Drill-down panel */}
-      {drillItems.length > 0 && (
+      {/* Drill-down panel (monthly) */}
+      {drillItems.length > 0 && expandedMonth && (
         <DrillPanel items={drillItems} title={drillTitle} onClose={() => { setExpandedMonth(null); setDrillItems([]); }} onItemClick={(id) => setDetailId(id)} />
       )}
 
