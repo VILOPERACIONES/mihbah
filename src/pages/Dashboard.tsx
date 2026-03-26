@@ -41,14 +41,6 @@ interface Movimiento {
   categoria: string | null;
   concepto: string;
   monto: number;
-interface Movimiento {
-  id: string;
-  fecha: string;
-  empresa: string;
-  tipo: string;
-  categoria: string | null;
-  concepto: string;
-  monto: number;
 }
 
 interface CuentasPendientes {
