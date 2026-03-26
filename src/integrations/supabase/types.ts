@@ -341,6 +341,16 @@ export type Database = {
         Args: { _empresa?: string }
         Returns: Json
       }
+      get_flujo_caja_mensual: {
+        Args: { _anio_desde: number; _anio_hasta: number; _empresa?: string }
+        Returns: {
+          anio: number
+          ingresos: number
+          mes: number
+          neto: number
+          salidas: number
+        }[]
+      }
       get_flujo_mensual: {
         Args: { _anio_desde: number; _empresa?: string }
         Returns: {

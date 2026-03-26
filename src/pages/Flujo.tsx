@@ -31,43 +31,29 @@ export default function FlujoPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      let query = supabase
-        .from("movimientos")
-        .select("anio, mes, tipo, monto")
-        .eq("activo", true)
-        .gte("anio", Number(anioDesde))
-        .lte("anio", Number(anioHasta));
+      const empresaFilter = empresaActiva === "TODAS" ? undefined : empresaActiva;
+      const { data: rows } = await supabase.rpc("get_flujo_caja_mensual", {
+        _anio_desde: Number(anioDesde),
+        _anio_hasta: Number(anioHasta),
+        ...(empresaFilter ? { _empresa: empresaFilter } : {}),
+      });
 
-      if (empresaActiva !== "TODAS") query = query.eq("empresa", empresaActiva);
-      const { data: movs } = await query;
-
-      if (movs) {
-        const mapa = new Map<string, { anio: number; mes: number; ingresos: number; salidas: number }>();
-        movs.forEach((m: { anio: number; mes: number; tipo: string; monto: number }) => {
-          const key = `${m.anio}-${String(m.mes).padStart(2, "0")}`;
-          if (!mapa.has(key)) mapa.set(key, { anio: m.anio, mes: m.mes, ingresos: 0, salidas: 0 });
-          const entry = mapa.get(key)!;
-          if (m.tipo === "INGRESO") entry.ingresos += Number(m.monto);
-          if (m.tipo === "SALIDA") entry.salidas += Math.abs(Number(m.monto));
+      if (rows) {
+        let acumulado = 0;
+        const result = (rows as { anio: number; mes: number; neto: number; ingresos: number; salidas: number }[]).map((r) => {
+          const row: FlujoRow = {
+            anio: r.anio,
+            mes: r.mes,
+            balanceInicial: acumulado,
+            ingresos: Number(r.ingresos),
+            salidas: Number(r.salidas),
+            diferencia: Number(r.neto),
+            balanceFinal: acumulado + Number(r.neto),
+          };
+          acumulado += Number(r.neto);
+          return row;
         });
-
-        let balance = 0;
-        const rows = [...mapa.entries()]
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([, e]) => {
-            const dif = e.ingresos - e.salidas;
-            const row: FlujoRow = {
-              anio: e.anio, mes: e.mes,
-              balanceInicial: balance,
-              ingresos: e.ingresos,
-              salidas: e.salidas,
-              diferencia: dif,
-              balanceFinal: balance + dif,
-            };
-            balance += dif;
-            return row;
-          });
-        setData(rows);
+        setData(result);
       }
       setLoading(false);
     }
