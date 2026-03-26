@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip as RTooltip, ResponsiveContainer, Area, AreaChart, Cell, PieChart, Pie
+  Tooltip as RTooltip, ResponsiveContainer, Area, AreaChart, Cell, PieChart, Pie, Legend
 } from "recharts";
 
 const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
