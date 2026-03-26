@@ -154,6 +154,8 @@ export default function ReportesPage() {
   const [drillItems, setDrillItems] = useState<DrillItem[]>([]);
   const [drillTitle, setDrillTitle] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [ingresosBreakdown, setIngresosBreakdown] = useState<IngresosBreakdown>({ ventaProyecto: 0, levantamientoCapital: 0 });
+  const [ingresosExpanded, setIngresosExpanded] = useState(false);
 
   const empresa = empresaActiva === "TODAS" ? null : empresaActiva;
 
