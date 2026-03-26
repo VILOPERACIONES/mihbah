@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpDown, Calendar, FileCheck, FileWarning, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { MovimientoDetailSheet } from "@/components/movimientos/MovimientoDetailSheet";
 
@@ -294,15 +294,16 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={flujo}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#888888" }} />
-              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#888888" }} />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
               <Tooltip
                 contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number, name: string) => [formatMonto(v, true), name === "ingresos" ? "Ingresos" : name === "salidas" ? "Egresos" : "Balance"]}
               />
-              <Area type="monotone" dataKey="ingresos" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="salidas" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="balance" stroke="#4ADE80" fill="none" strokeWidth={2} strokeDasharray="4 2" />
+              <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
+              <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="salidas" name="Egresos" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="balance" name="Balance" stroke="#4ADE80" fill="none" strokeWidth={2} strokeDasharray="4 2" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -312,13 +313,13 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={topCats} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
-              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#888888" }} />
-              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "#888888" }} />
+              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
               <Tooltip
                 contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
                 formatter={(v: number) => [formatMonto(v, true), "Total"]}
               />
-              <Bar dataKey="total" fill="#EF4444" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total" name="Total" fill="#EF4444" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>

@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip as RTooltip, ResponsiveContainer, Area, AreaChart, Cell, PieChart, Pie
+  Tooltip as RTooltip, ResponsiveContainer, Area, AreaChart, Cell, PieChart, Pie, Legend
 } from "recharts";
 
 const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -479,15 +479,16 @@ export default function ReportesPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--bg-border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--text-3))" }} />
-              <YAxis tickFormatter={(v: number) => formatMontoAbreviado(v)} tick={{ fontSize: 10, fill: "hsl(var(--text-3))" }} width={55} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+              <YAxis tickFormatter={(v: number) => formatMontoAbreviado(v)} tick={{ fontSize: 10, fill: "#CCCCCC" }} width={55} />
               <RTooltip
-                contentStyle={{ background: "hsl(var(--bg-surface))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 11 }}
+                contentStyle={{ background: "hsl(var(--bg-surface))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 11, color: "#FFFFFF" }}
                 formatter={(v: number) => formatMonto(v)}
               />
+              <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
               <Area type="monotone" dataKey="Ingresos" stroke="hsl(142,71%,45%)" fill="url(#gradIng)" strokeWidth={2} />
               <Area type="monotone" dataKey="Egresos" stroke="hsl(0,84%,60%)" fill="url(#gradEgr)" strokeWidth={2} />
-              <Line type="monotone" dataKey="Año Ant." stroke="hsl(var(--text-4))" strokeWidth={1} strokeDasharray="4 4" dot={false} />
+              <Line type="monotone" dataKey="Año Ant." stroke="#888888" strokeWidth={1} strokeDasharray="4 4" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -533,13 +534,14 @@ export default function ReportesPage() {
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--bg-border))" />
-            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--text-3))" }} />
-            <YAxis tickFormatter={(v: number) => `${v.toFixed(0)}%`} tick={{ fontSize: 10, fill: "hsl(var(--text-3))" }} width={40} />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+            <YAxis tickFormatter={(v: number) => `${v.toFixed(0)}%`} tick={{ fontSize: 10, fill: "#CCCCCC" }} width={40} />
             <RTooltip
-              contentStyle={{ background: "hsl(var(--bg-surface))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 11 }}
+              contentStyle={{ background: "hsl(var(--bg-surface))", border: "1px solid hsl(var(--bg-border))", borderRadius: 8, fontSize: 11, color: "#FFFFFF" }}
               formatter={(v: number) => `${v.toFixed(1)}%`}
             />
-            <Bar dataKey="Margen" radius={[4, 4, 0, 0]}>
+            <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
+            <Bar dataKey="Margen" name="Margen %" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, i) => (
                 <Cell key={i} fill={entry.Margen >= 0 ? "hsl(142,71%,45%)" : "hsl(0,84%,60%)"} opacity={0.8} />
               ))}
