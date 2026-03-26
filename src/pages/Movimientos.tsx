@@ -38,6 +38,7 @@ export default function MovimientosPage() {
   const [tipoFilter, setTipoFilter] = useState("all");
   const [excelOpen, setExcelOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [cardData, setCardData] = useState({ ventas: 0, ventasCount: 0, inversion: 0, inversionCount: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
