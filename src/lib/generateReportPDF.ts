@@ -33,9 +33,23 @@ interface ReportData {
 }
 
 const MESES_FULL = [
-  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
+
+// ── Theme ──
+const C = {
+  jade: [34, 197, 94] as [number, number, number],
+  red: [239, 68, 68] as [number, number, number],
+  yellow: [234, 179, 8] as [number, number, number],
+  bg: [10, 10, 10] as [number, number, number],
+  surface: [22, 22, 22] as [number, number, number],
+  surfaceLight: [30, 30, 30] as [number, number, number],
+  white: [245, 245, 245] as [number, number, number],
+  gray: [140, 140, 140] as [number, number, number],
+  lightGray: [200, 200, 200] as [number, number, number],
+  border: [40, 40, 40] as [number, number, number],
+};
 
 function fmt(n: number): string {
   return "$" + Math.abs(n).toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -45,144 +59,147 @@ function pctChange(curr: number, prev: number): number | null {
   return prev > 0 ? ((curr - prev) / prev) * 100 : null;
 }
 
+function colorForValue(val: number, thresholdPos = 0): [number, number, number] {
+  return val >= thresholdPos ? C.jade : C.red;
+}
+
 export function generateReportPDF(data: ReportData) {
   const { anio, empresa, rows, prevRows, categories, alerts, totals, prevTotals } = data;
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 15;
-  const contentW = pageW - margin * 2;
-  let y = margin;
+  const pageH = doc.internal.pageSize.getHeight();
+  const M = 14; // margin
+  const W = pageW - M * 2;
+  let y = M;
 
-  // ── Colors ──
-  const jade = [34, 197, 94] as [number, number, number];
-  const red = [239, 68, 68] as [number, number, number];
-  const yellow = [234, 179, 8] as [number, number, number];
-  const dark = [10, 10, 10] as [number, number, number];
-  const darkSurface = [20, 20, 20] as [number, number, number];
-  const textWhite = [255, 255, 255] as [number, number, number];
-  const textGray = [136, 136, 136] as [number, number, number];
-  const textLight = [229, 229, 229] as [number, number, number];
-
-  // ── Background ──
-  doc.setFillColor(0, 0, 0);
-  doc.rect(0, 0, pageW, doc.internal.pageSize.getHeight(), "F");
-
-  // ── Helper: new page with bg ──
-  function newPage() {
-    doc.addPage();
-    doc.setFillColor(0, 0, 0);
-    doc.rect(0, 0, pageW, doc.internal.pageSize.getHeight(), "F");
-    y = margin;
+  // ── Helpers ──
+  function fillBg() {
+    doc.setFillColor(...C.bg);
+    doc.rect(0, 0, pageW, pageH, "F");
   }
 
-  function checkPage(needed: number) {
-    if (y + needed > doc.internal.pageSize.getHeight() - margin) {
+  function newPage() {
+    doc.addPage();
+    fillBg();
+    y = M;
+  }
+
+  function ensureSpace(needed: number) {
+    if (y + needed > pageH - M - 12) {
       newPage();
     }
   }
 
+  function sectionTitle(title: string) {
+    ensureSpace(14);
+    doc.setFillColor(...C.surface);
+    doc.roundedRect(M, y, W, 8, 1.5, 1.5, "F");
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C.white);
+    doc.text(title.toUpperCase(), M + 4, y + 5.5);
+    y += 11;
+  }
+
+  // ── Page 1 Background ──
+  fillBg();
+
   // ── Header ──
-  doc.setFillColor(...darkSurface);
-  doc.roundedRect(margin, y, contentW, 22, 3, 3, "F");
-  doc.setFontSize(16);
+  doc.setFillColor(...C.surface);
+  doc.roundedRect(M, y, W, 20, 2, 2, "F");
+  // Left accent bar
+  doc.setFillColor(...C.jade);
+  doc.rect(M, y, 2.5, 20, "F");
+
+  doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(...textWhite);
-  doc.text("Estado de Resultados", margin + 6, y + 9);
-  doc.setFontSize(10);
+  doc.setTextColor(...C.white);
+  doc.text("Estado de Resultados", M + 7, y + 8);
+
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(...textGray);
-  doc.text(`${empresa === "TODAS" ? "Consolidado" : empresa} — ${anio}`, margin + 6, y + 17);
-  
+  doc.setTextColor(...C.gray);
+  const subtitle = empresa === "TODAS" ? "Consolidado" : empresa;
+  doc.text(`${subtitle}  •  Ejercicio ${anio}`, M + 7, y + 15);
+
   const dateStr = new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
-  doc.setFontSize(8);
-  doc.text(`Generado: ${dateStr}`, pageW - margin - 6, y + 17, { align: "right" });
-  y += 28;
+  doc.setFontSize(7);
+  doc.text(dateStr, pageW - M - 4, y + 15, { align: "right" });
+  y += 25;
 
-  // ── KPIs Section ──
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...textWhite);
-  doc.text("Indicadores Clave", margin, y);
-  y += 6;
+  // ── KPI Cards ──
+  sectionTitle("Indicadores Clave");
 
-  const kpiW = (contentW - 9) / 4;
+  const kpiW = (W - 6) / 4;
+  const kpiH = 24;
   const kpis = [
-    { label: "Ingresos Totales", value: fmt(totals.ingresos), trend: pctChange(totals.ingresos, prevTotals.ingresos), color: jade },
-    { label: "Egresos Totales", value: fmt(totals.egresos), trend: pctChange(totals.egresos, prevTotals.egresos), color: red },
-    { label: "Resultado Neto", value: (totals.resultado >= 0 ? "+" : "-") + fmt(totals.resultado), trend: pctChange(totals.resultado, prevTotals.resultado), color: totals.resultado >= 0 ? jade : red },
-    { label: "Margen Operativo", value: `${totals.margen.toFixed(1)}%`, trend: null, color: totals.margen >= 15 ? jade : totals.margen >= 0 ? yellow : red },
+    { label: "Ingresos", value: fmt(totals.ingresos), trend: pctChange(totals.ingresos, prevTotals.ingresos), color: C.jade },
+    { label: "Egresos", value: fmt(totals.egresos), trend: pctChange(totals.egresos, prevTotals.egresos), color: C.red },
+    { label: "Resultado Neto", value: (totals.resultado >= 0 ? "+" : "-") + fmt(totals.resultado), trend: pctChange(totals.resultado, prevTotals.resultado), color: colorForValue(totals.resultado) },
+    { label: "Margen", value: `${totals.margen.toFixed(1)}%`, trend: null, color: totals.margen >= 15 ? C.jade : totals.margen >= 0 ? C.yellow : C.red },
   ];
 
   kpis.forEach((kpi, i) => {
-    const x = margin + i * (kpiW + 3);
-    doc.setFillColor(...darkSurface);
-    doc.roundedRect(x, y, kpiW, 22, 2, 2, "F");
-    
-    // Accent bar
+    const x = M + i * (kpiW + 2);
+    doc.setFillColor(...C.surfaceLight);
+    doc.roundedRect(x, y, kpiW, kpiH, 2, 2, "F");
+
+    // Top accent line
     doc.setFillColor(...kpi.color);
-    doc.rect(x, y, 2, 22, "F");
-    
-    doc.setFontSize(7);
+    doc.rect(x + 4, y + 1, kpiW - 8, 0.8, "F");
+
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(...textGray);
-    doc.text(kpi.label.toUpperCase(), x + 5, y + 6);
-    
-    doc.setFontSize(13);
+    doc.setTextColor(...C.gray);
+    doc.text(kpi.label.toUpperCase(), x + 4, y + 7);
+
+    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...textWhite);
-    doc.text(kpi.value, x + 5, y + 14);
-    
+    doc.setTextColor(...C.white);
+    doc.text(kpi.value, x + 4, y + 14.5);
+
     if (kpi.trend !== null) {
-      const trendStr = `${kpi.trend >= 0 ? "▲" : "▼"} ${Math.abs(kpi.trend).toFixed(1)}% vs ${Number(anio) - 1}`;
-      doc.setFontSize(6.5);
+      const arrow = kpi.trend >= 0 ? "+" : "";
+      const trendStr = `${arrow}${kpi.trend.toFixed(1)}% vs ${Number(anio) - 1}`;
+      doc.setFontSize(6);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(...(kpi.trend >= 0 ? jade : red));
-      doc.text(trendStr, x + 5, y + 19);
+      doc.setTextColor(...(kpi.trend >= 0 ? C.jade : C.red));
+      doc.text(trendStr, x + 4, y + 20);
     }
   });
-  y += 28;
+  y += kpiH + 6;
 
-  // ── Alerts Section ──
+  // ── Alerts ──
   if (alerts.length > 0) {
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...textWhite);
-    doc.text("Alertas Estratégicas", margin, y);
-    y += 5;
+    sectionTitle("Alertas Estratégicas");
 
     alerts.forEach((alert) => {
-      checkPage(14);
-      const aColor = alert.level === "critical" ? red : alert.level === "warning" ? yellow : jade;
-      doc.setFillColor(aColor[0], aColor[1], aColor[2]);
-      doc.setGState(new (doc as any).GState({ opacity: 0.12 }));
-      doc.roundedRect(margin, y, contentW, 11, 2, 2, "F");
-      doc.setGState(new (doc as any).GState({ opacity: 1 }));
-      
-      // Accent dot
+      ensureSpace(12);
+      const aColor = alert.level === "critical" ? C.red : alert.level === "warning" ? C.yellow : C.jade;
+
+      doc.setFillColor(...C.surfaceLight);
+      doc.roundedRect(M, y, W, 10, 1.5, 1.5, "F");
+
+      // Left accent
       doc.setFillColor(...aColor);
-      doc.circle(margin + 5, y + 5.5, 1.5, "F");
-      
-      doc.setFontSize(8);
+      doc.rect(M, y, 2, 10, "F");
+
+      doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...aColor);
-      doc.text(alert.title, margin + 10, y + 4.5);
-      
-      doc.setFontSize(7);
+      doc.text(alert.title, M + 5, y + 4);
+
+      doc.setFontSize(6.5);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(...textLight);
-      doc.text(alert.description, margin + 10, y + 9, { maxWidth: contentW - 15 });
-      y += 13;
+      doc.setTextColor(...C.lightGray);
+      doc.text(alert.description, M + 5, y + 8.5, { maxWidth: W - 10 });
+      y += 12;
     });
-    y += 3;
+    y += 2;
   }
 
   // ── Monthly P&L Table ──
-  checkPage(30);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...textWhite);
-  doc.text("Desglose Mensual", margin, y);
-  y += 3;
+  sectionTitle(`Desglose Mensual — ${anio}`);
 
   const tableBody = rows.map((r, i) => {
     const prevR = prevRows[i];
@@ -190,7 +207,6 @@ export function generateReportPDF(data: ReportData) {
     const yoy = prevR && prevR.resultado !== 0
       ? `${((r.resultado - prevR.resultado) / Math.abs(prevR.resultado) * 100).toFixed(0)}%`
       : "—";
-    const signal = !hasData ? "" : r.margen >= 15 ? "🟢" : r.margen >= 0 ? "🟡" : "🔴";
     return [
       MESES_FULL[r.mes - 1],
       hasData ? fmt(r.ingresos) : "—",
@@ -198,7 +214,6 @@ export function generateReportPDF(data: ReportData) {
       hasData ? `${r.resultado >= 0 ? "+" : "-"}${fmt(r.resultado)}` : "—",
       hasData ? `${r.margen.toFixed(1)}%` : "—",
       yoy,
-      signal,
     ];
   });
 
@@ -212,170 +227,178 @@ export function generateReportPDF(data: ReportData) {
     pctChange(totals.resultado, prevTotals.resultado) !== null
       ? `${pctChange(totals.resultado, prevTotals.resultado)!.toFixed(0)}%`
       : "—",
-    "",
   ]);
 
   autoTable(doc, {
     startY: y,
-    head: [["Mes", "Ingresos", "Egresos", "Resultado", "Margen", `vs ${Number(anio) - 1}`, ""]],
+    head: [["Mes", "Ingresos", "Egresos", "Resultado", "Margen", `vs ${Number(anio) - 1}`]],
     body: tableBody,
     theme: "plain",
     styles: {
       fontSize: 7.5,
-      cellPadding: 2.5,
-      textColor: textLight,
-      fillColor: dark,
-      lineWidth: 0.1,
-      lineColor: [26, 26, 26],
+      cellPadding: { top: 2.5, right: 3, bottom: 2.5, left: 3 },
+      textColor: C.lightGray,
+      fillColor: C.bg,
+      lineWidth: 0.2,
+      lineColor: C.border,
+      overflow: "linebreak",
     },
     headStyles: {
-      fillColor: darkSurface,
-      textColor: textGray,
+      fillColor: C.surface,
+      textColor: C.gray,
       fontStyle: "bold",
       fontSize: 7,
+      cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
     },
     columnStyles: {
-      0: { cellWidth: 30, fontStyle: "bold" },
-      1: { halign: "right", cellWidth: 28 },
-      2: { halign: "right", cellWidth: 28 },
-      3: { halign: "right", cellWidth: 30, fontStyle: "bold" },
-      4: { halign: "right", cellWidth: 20 },
-      5: { halign: "right", cellWidth: 22 },
-      6: { halign: "center", cellWidth: 10 },
+      0: { cellWidth: 28, fontStyle: "bold" },
+      1: { halign: "right", cellWidth: 30 },
+      2: { halign: "right", cellWidth: 30 },
+      3: { halign: "right", cellWidth: 32, fontStyle: "bold" },
+      4: { halign: "right", cellWidth: 22 },
+      5: { halign: "right", cellWidth: 24 },
+    },
+    didDrawPage: () => {
+      // Repaint bg on new pages created by autoTable
+      doc.setFillColor(...C.bg);
+      doc.rect(0, 0, pageW, pageH, "FD");
+    },
+    willDrawPage: () => {
+      doc.setFillColor(...C.bg);
+      doc.rect(0, 0, pageW, pageH, "F");
     },
     didParseCell: (hookData) => {
       const { row, column, cell } = hookData;
       if (row.section === "body") {
-        // Color code resultado column
+        if (column.index === 1 && String(cell.raw) !== "—") {
+          cell.styles.textColor = C.jade;
+        }
+        if (column.index === 2 && String(cell.raw) !== "—") {
+          cell.styles.textColor = C.red;
+        }
         if (column.index === 3) {
           const val = String(cell.raw);
-          cell.styles.textColor = val.startsWith("+") ? jade : val.startsWith("-") ? red : textLight;
+          cell.styles.textColor = val.startsWith("+") ? C.jade : val.startsWith("-") ? C.red : C.lightGray;
         }
-        // Color code ingresos
-        if (column.index === 1 && String(cell.raw) !== "—") {
-          cell.styles.textColor = jade;
-        }
-        // Color code egresos
-        if (column.index === 2 && String(cell.raw) !== "—") {
-          cell.styles.textColor = red;
-        }
-        // Color margen
         if (column.index === 4 && String(cell.raw) !== "—") {
           const pct = parseFloat(String(cell.raw));
-          cell.styles.textColor = pct >= 15 ? jade : pct >= 0 ? yellow : red;
+          cell.styles.textColor = pct >= 15 ? C.jade : pct >= 0 ? C.yellow : C.red;
+        }
+        if (column.index === 5 && String(cell.raw) !== "—") {
+          const val = String(cell.raw);
+          const num = parseFloat(val);
+          if (!isNaN(num)) {
+            cell.styles.textColor = num >= 0 ? C.jade : C.red;
+          }
         }
         // Bold total row
         if (row.index === tableBody.length - 1) {
-          cell.styles.fillColor = darkSurface;
+          cell.styles.fillColor = C.surface;
           cell.styles.fontStyle = "bold";
           cell.styles.fontSize = 8;
+          cell.styles.textColor = C.white;
+          // Keep color coding for specific columns
+          if (column.index === 1) cell.styles.textColor = C.jade;
+          if (column.index === 2) cell.styles.textColor = C.red;
+          if (column.index === 3) cell.styles.textColor = colorForValue(totals.resultado);
+          if (column.index === 4) cell.styles.textColor = totals.margen >= 0 ? C.jade : C.red;
         }
       }
     },
-    margin: { left: margin, right: margin },
+    margin: { left: M, right: M, top: M, bottom: M + 10 },
   });
 
   y = (doc as any).lastAutoTable.finalY + 8;
 
   // ── Categories Breakdown ──
   if (categories.length > 0) {
-    checkPage(40);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...textWhite);
-    doc.text("Distribución de Gastos por Categoría", margin, y);
-    y += 3;
+    sectionTitle("Distribución de Gastos por Categoría");
 
-    const catBody = categories.map((c) => [
+    const catBody = categories.map((c, i) => [
+      `${i + 1}.`,
       c.categoria,
       fmt(c.total),
       `${c.pct.toFixed(1)}%`,
     ]);
 
     const totalCat = categories.reduce((s, c) => s + c.total, 0);
-    catBody.push(["TOTAL", fmt(totalCat), "100%"]);
+    catBody.push(["", "TOTAL", fmt(totalCat), "100%"]);
 
     autoTable(doc, {
       startY: y,
-      head: [["Categoría", "Monto", "% del Total"]],
+      head: [["#", "Categoría", "Monto", "% del Total"]],
       body: catBody,
       theme: "plain",
       styles: {
         fontSize: 7.5,
-        cellPadding: 2.5,
-        textColor: textLight,
-        fillColor: dark,
-        lineWidth: 0.1,
-        lineColor: [26, 26, 26],
+        cellPadding: { top: 2.5, right: 3, bottom: 2.5, left: 3 },
+        textColor: C.lightGray,
+        fillColor: C.bg,
+        lineWidth: 0.2,
+        lineColor: C.border,
+        overflow: "linebreak",
       },
       headStyles: {
-        fillColor: darkSurface,
-        textColor: textGray,
+        fillColor: C.surface,
+        textColor: C.gray,
         fontStyle: "bold",
         fontSize: 7,
       },
       columnStyles: {
-        0: { cellWidth: 60 },
-        1: { halign: "right", cellWidth: 35, textColor: red },
-        2: { halign: "right", cellWidth: 25 },
+        0: { cellWidth: 10, halign: "center", textColor: C.gray },
+        1: { cellWidth: 65 },
+        2: { halign: "right", cellWidth: 35, textColor: C.red },
+        3: { halign: "right", cellWidth: 28 },
+      },
+      willDrawPage: () => {
+        doc.setFillColor(...C.bg);
+        doc.rect(0, 0, pageW, pageH, "F");
       },
       didParseCell: (hookData) => {
-        const { row, cell } = hookData;
-        if (row.section === "body" && row.index === catBody.length - 1) {
-          cell.styles.fillColor = darkSurface;
-          cell.styles.fontStyle = "bold";
-          cell.styles.fontSize = 8;
-        }
-        // Highlight top category bar
-        if (row.section === "body" && row.index === 0 && hookData.column.index === 0) {
-          cell.styles.textColor = yellow;
+        const { row, cell, column } = hookData;
+        if (row.section === "body") {
+          // Highlight top category
+          if (row.index === 0 && column.index === 1) {
+            cell.styles.textColor = C.yellow;
+            cell.styles.fontStyle = "bold";
+          }
+          // Total row
+          if (row.index === catBody.length - 1) {
+            cell.styles.fillColor = C.surface;
+            cell.styles.fontStyle = "bold";
+            cell.styles.fontSize = 8;
+            if (column.index === 2) cell.styles.textColor = C.red;
+          }
         }
       },
-      margin: { left: margin, right: margin },
+      margin: { left: M, right: M, top: M, bottom: M + 10 },
     });
 
     y = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  // ── YoY Comparison Summary ──
-  checkPage(30);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...textWhite);
-  doc.text(`Comparativo ${Number(anio) - 1} vs ${anio}`, margin, y);
-  y += 3;
+  // ── YoY Comparison ──
+  sectionTitle(`Comparativo Interanual — ${Number(anio) - 1} vs ${anio}`);
+
+  const buildVariation = (curr: number, prev: number, isMargin = false): string => {
+    if (isMargin) {
+      const diff = curr - prev;
+      return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pp`;
+    }
+    const pct = pctChange(curr, prev);
+    return pct !== null ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%` : "N/A";
+  };
 
   const yoyBody = [
-    [
-      "Ingresos",
-      fmt(prevTotals.ingresos),
-      fmt(totals.ingresos),
-      pctChange(totals.ingresos, prevTotals.ingresos) !== null
-        ? `${pctChange(totals.ingresos, prevTotals.ingresos)! >= 0 ? "+" : ""}${pctChange(totals.ingresos, prevTotals.ingresos)!.toFixed(1)}%`
-        : "N/A",
-    ],
-    [
-      "Egresos",
-      fmt(prevTotals.egresos),
-      fmt(totals.egresos),
-      pctChange(totals.egresos, prevTotals.egresos) !== null
-        ? `${pctChange(totals.egresos, prevTotals.egresos)! >= 0 ? "+" : ""}${pctChange(totals.egresos, prevTotals.egresos)!.toFixed(1)}%`
-        : "N/A",
-    ],
+    ["Ingresos", fmt(prevTotals.ingresos), fmt(totals.ingresos), buildVariation(totals.ingresos, prevTotals.ingresos)],
+    ["Egresos", fmt(prevTotals.egresos), fmt(totals.egresos), buildVariation(totals.egresos, prevTotals.egresos)],
     [
       "Resultado Neto",
       `${prevTotals.resultado >= 0 ? "+" : "-"}${fmt(prevTotals.resultado)}`,
       `${totals.resultado >= 0 ? "+" : "-"}${fmt(totals.resultado)}`,
-      pctChange(totals.resultado, prevTotals.resultado) !== null
-        ? `${pctChange(totals.resultado, prevTotals.resultado)! >= 0 ? "+" : ""}${pctChange(totals.resultado, prevTotals.resultado)!.toFixed(1)}%`
-        : "N/A",
+      buildVariation(totals.resultado, prevTotals.resultado),
     ],
-    [
-      "Margen",
-      `${prevTotals.margen.toFixed(1)}%`,
-      `${totals.margen.toFixed(1)}%`,
-      `${(totals.margen - prevTotals.margen) >= 0 ? "+" : ""}${(totals.margen - prevTotals.margen).toFixed(1)}pp`,
-    ],
+    ["Margen", `${prevTotals.margen.toFixed(1)}%`, `${totals.margen.toFixed(1)}%`, buildVariation(totals.margen, prevTotals.margen, true)],
   ];
 
   autoTable(doc, {
@@ -385,53 +408,62 @@ export function generateReportPDF(data: ReportData) {
     theme: "plain",
     styles: {
       fontSize: 7.5,
-      cellPadding: 2.5,
-      textColor: textLight,
-      fillColor: dark,
-      lineWidth: 0.1,
-      lineColor: [26, 26, 26],
+      cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
+      textColor: C.lightGray,
+      fillColor: C.bg,
+      lineWidth: 0.2,
+      lineColor: C.border,
+      overflow: "linebreak",
     },
     headStyles: {
-      fillColor: darkSurface,
-      textColor: textGray,
+      fillColor: C.surface,
+      textColor: C.gray,
       fontStyle: "bold",
       fontSize: 7,
     },
     columnStyles: {
-      0: { cellWidth: 40, fontStyle: "bold" },
-      1: { halign: "right", cellWidth: 35 },
-      2: { halign: "right", cellWidth: 35, fontStyle: "bold" },
-      3: { halign: "right", cellWidth: 30 },
+      0: { cellWidth: 38, fontStyle: "bold" },
+      1: { halign: "right", cellWidth: 38 },
+      2: { halign: "right", cellWidth: 38, fontStyle: "bold" },
+      3: { halign: "right", cellWidth: 32 },
+    },
+    willDrawPage: () => {
+      doc.setFillColor(...C.bg);
+      doc.rect(0, 0, pageW, pageH, "F");
     },
     didParseCell: (hookData) => {
-      const { column, cell } = hookData;
-      if (hookData.row.section === "body" && column.index === 3) {
+      const { column, cell, row } = hookData;
+      if (row.section === "body" && column.index === 3) {
         const val = String(cell.raw);
-        cell.styles.textColor = val.startsWith("+") ? jade : val.startsWith("-") ? red : textLight;
+        cell.styles.textColor = val.startsWith("+") ? C.jade : val.startsWith("-") ? C.red : C.lightGray;
         cell.styles.fontStyle = "bold";
       }
+      // Color current year column
+      if (row.section === "body" && column.index === 2) {
+        if (row.index === 0) cell.styles.textColor = C.jade;
+        if (row.index === 1) cell.styles.textColor = C.red;
+        if (row.index === 2) cell.styles.textColor = colorForValue(totals.resultado);
+        if (row.index === 3) cell.styles.textColor = totals.margen >= 0 ? C.jade : C.red;
+      }
     },
-    margin: { left: margin, right: margin },
+    margin: { left: M, right: M, top: M, bottom: M + 10 },
   });
 
-  // ── Footer ──
+  // ── Footer on all pages ──
   const pageCount = doc.getNumberOfPages();
   for (let p = 1; p <= pageCount; p++) {
     doc.setPage(p);
-    doc.setFontSize(7);
-    doc.setTextColor(...textGray);
-    doc.text(
-      `Página ${p} de ${pageCount}`,
-      pageW / 2, doc.internal.pageSize.getHeight() - 8,
-      { align: "center" }
-    );
-    doc.text(
-      "Reporte generado automáticamente — Confidencial",
-      pageW / 2, doc.internal.pageSize.getHeight() - 4,
-      { align: "center" }
-    );
+    // Footer bar
+    doc.setFillColor(...C.surface);
+    doc.rect(0, pageH - 10, pageW, 10, "F");
+
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...C.gray);
+    doc.text(`Página ${p} de ${pageCount}`, M, pageH - 4);
+    doc.text("Reporte generado automáticamente  •  Confidencial", pageW - M, pageH - 4, { align: "right" });
   }
 
   // ── Download ──
-  doc.save(`Estado_Resultados_${anio}_${empresa}.pdf`);
+  doc.save(`Estado_Resultados_${anio}_${empresa.replace(/\s+/g, "_")}.pdf`);
 }
