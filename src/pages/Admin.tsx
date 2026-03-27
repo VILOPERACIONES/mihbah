@@ -79,9 +79,12 @@ export default function AdminPage() {
           </p>
         </div>
         {isDevAdmin && (
-          <Badge className="ml-auto bg-primary/20 text-primary border-primary/30 gap-1">
-            <ShieldCheck className="h-3 w-3" /> DEV ADMIN
-          </Badge>
+          <div className="ml-auto flex items-center gap-2">
+            <WipeDbButton />
+            <Badge className="bg-primary/20 text-primary border-primary/30 gap-1">
+              <ShieldCheck className="h-3 w-3" /> DEV ADMIN
+            </Badge>
+          </div>
         )}
       </div>
 
