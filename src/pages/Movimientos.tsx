@@ -145,64 +145,30 @@ export default function MovimientosPage() {
   return (
     <div className="space-y-4">
       {/* Active filters indicator */}
-      {(activeUpload || proyectoParam || cuentaParam) && (
+      {activeUpload && (
         <div className="flex items-center gap-2 flex-wrap">
-          {activeUpload && (
-            <>
-              <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
-                📄 {activeUpload.nombre}
-              </Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-muted-foreground"
-                onClick={() => {
-                  setActiveUpload(null);
-                  navigate("/movimientos", { replace: true });
-                }}
-              >
-                <X className="h-3 w-3 mr-1" /> Ver todos
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-muted-foreground"
-                onClick={() => navigate("/cargas")}
-              >
-                Ir a Cargas
-              </Button>
-            </>
-          )}
-          {proyectoParam && (
-            <>
-              <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
-                🏗️ Proyecto: {proyectoParam}
-              </Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-muted-foreground"
-                onClick={() => navigate("/movimientos", { replace: true })}
-              >
-                <X className="h-3 w-3 mr-1" /> Quitar filtro
-              </Button>
-            </>
-          )}
-          {cuentaParam && (
-            <>
-              <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
-                🏦 Cuenta: {cuentaParam}
-              </Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-muted-foreground"
-                onClick={() => navigate("/movimientos", { replace: true })}
-              >
-                <X className="h-3 w-3 mr-1" /> Quitar filtro
-              </Button>
-            </>
-          )}
+          <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
+            📄 {activeUpload.nombre}
+          </Badge>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-muted-foreground"
+            onClick={() => {
+              setActiveUpload(null);
+              navigate("/movimientos", { replace: true });
+            }}
+          >
+            <X className="h-3 w-3 mr-1" /> Ver todos
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-muted-foreground"
+            onClick={() => navigate("/cargas")}
+          >
+            Ir a Cargas
+          </Button>
         </div>
       )}
 
