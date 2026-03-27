@@ -204,8 +204,9 @@ function UsersTab() {
             <EditUserForm
               userRow={editingUser}
               currentUserRole={currentUser?.rol ?? ""}
-              onUpdateRole={(role) => { handleUpdateRole(editingUser.user_id, role); setEditingUser(null); }}
-              onUpdateEmpresas={(empresas) => { handleUpdateEmpresas(editingUser.user_id, empresas); setEditingUser(null); }}
+              onUpdateRole={(role) => { handleUpdateRole(editingUser.user_id, role); }}
+              onUpdateEmpresas={(empresas) => { handleUpdateEmpresas(editingUser.user_id, empresas); }}
+              onUpdateModulosOverride={(overrides) => { handleUpdateModulosOverride(editingUser.user_id, overrides); setEditingUser(null); }}
               onToggleActive={() => { handleToggleActive(editingUser); setEditingUser(null); }}
               onClose={() => setEditingUser(null)}
             />
