@@ -23,7 +23,7 @@ import { useModuleAccess } from "@/hooks/useModuleAccess";
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
   { to: "/movimientos", label: "Movimientos", icon: ArrowUpDown, module: "movimientos" },
-  { to: "/cargas", label: "Cargas Excel", icon: FileSpreadsheet, module: "movimientos" },
+  { to: "/cargas", label: "Cargas Excel", icon: FileSpreadsheet, module: "cargas" },
   { to: "/flujo", label: "Flujo de Caja", icon: TrendingUp, module: "flujo" },
   { to: "/proyectos", label: "Proyectos", icon: Hammer, module: "proyectos" },
   { to: "/cuentas", label: "Cuentas", icon: Landmark, module: "cuentas" },
@@ -46,10 +46,7 @@ export function AppSidebar({ onClose, collapsed = false }: SidebarProps) {
   const location = useLocation();
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {
-    if (!allowedModules.includes(item.module as any)) return false;
-    // Restrict "Cargas Excel" to SUPER_ADMIN_DEV only
-    if (item.to === "/cargas" && user?.rol !== "SUPER_ADMIN_DEV") return false;
-    return true;
+    return allowedModules.includes(item.module as any);
   });
   const filteredAdminItems = ADMIN_ITEMS.filter((item) => allowedModules.includes(item.module as any));
 
