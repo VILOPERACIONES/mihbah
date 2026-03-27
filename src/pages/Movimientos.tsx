@@ -48,6 +48,8 @@ export default function MovimientosPage() {
 
   // Determine which upload_id to filter by
   const uploadParam = searchParams.get("upload");
+  const proyectoParam = searchParams.get("proyecto");
+  const cuentaParam = searchParams.get("cuenta");
 
   // Load latest upload on mount
   useEffect(() => {
@@ -105,12 +107,14 @@ export default function MovimientosPage() {
     if (empresaActiva !== "TODAS") query = query.eq("empresa", empresaActiva);
     if (tipoFilter !== "all") query = query.eq("tipo", tipoFilter as "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO");
     if (filtroBusqueda) query = query.ilike("concepto", `%${filtroBusqueda}%`);
+    if (proyectoParam) query = query.eq("proyecto", proyectoParam);
+    if (cuentaParam) query = query.eq("cuenta", cuentaParam);
 
     const { data, count } = await query;
     setMovs((data as Mov[]) ?? []);
     setTotal(count ?? 0);
     setLoading(false);
-  }, [empresaActiva, tipoFilter, filtroBusqueda, page, effectiveUploadId]);
+  }, [empresaActiva, tipoFilter, filtroBusqueda, page, effectiveUploadId, proyectoParam, cuentaParam]);
 
   const loadCards = useCallback(async () => {
     const baseFilter = (q: any) => {
@@ -144,12 +148,24 @@ export default function MovimientosPage() {
 
   return (
     <div className="space-y-4">
-      {/* Active upload indicator */}
-      {activeUpload && (
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
-            📄 {activeUpload.nombre}
-          </Badge>
+      {/* Active filter indicators */}
+      {(activeUpload || proyectoParam || cuentaParam) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {activeUpload && (
+            <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
+              📄 {activeUpload.nombre}
+            </Badge>
+          )}
+          {proyectoParam && (
+            <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
+              🔨 Proyecto: {proyectoParam}
+            </Badge>
+          )}
+          {cuentaParam && (
+            <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
+              🏦 Cuenta: {cuentaParam}
+            </Badge>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -159,16 +175,18 @@ export default function MovimientosPage() {
               navigate("/movimientos", { replace: true });
             }}
           >
-            <X className="h-3 w-3 mr-1" /> Ver todos
+            <X className="h-3 w-3 mr-1" /> Limpiar filtros
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2 text-xs text-muted-foreground"
-            onClick={() => navigate("/cargas")}
-          >
-            Ir a Cargas
-          </Button>
+          {activeUpload && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs text-muted-foreground"
+              onClick={() => navigate("/cargas")}
+            >
+              Ir a Cargas
+            </Button>
+          )}
         </div>
       )}
 
