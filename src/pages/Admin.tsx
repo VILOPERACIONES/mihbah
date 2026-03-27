@@ -168,6 +168,13 @@ function UsersTab() {
     fetchUsers();
   }
 
+  async function handleUpdateModulosOverride(userId: string, overrides: Record<string, boolean> | null) {
+    const { error } = await supabase.from("profiles").update({ modulos_override: overrides } as any).eq("user_id", userId);
+    if (error) return toast.error("Error: " + error.message);
+    toast.success("Acceso a módulos actualizado");
+    fetchUsers();
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
