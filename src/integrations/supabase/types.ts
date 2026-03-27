@@ -433,6 +433,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      wipe_financial_data: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "SUPER_ADMIN" | "ADMIN" | "VIEWER" | "SUPER_ADMIN_DEV"
