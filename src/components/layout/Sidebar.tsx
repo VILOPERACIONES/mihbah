@@ -100,14 +100,14 @@ export function AppSidebar({ onClose, collapsed = false }: SidebarProps) {
       </div>
 
       <nav className={cn("flex-1 py-3 space-y-1 overflow-y-auto", isCollapsed ? "px-2" : "px-3")}>
-        {NAV_ITEMS.map((item) => (
+        {filteredNavItems.map((item) => (
           <NavItem key={item.to} item={item} />
         ))}
 
-        {isAdmin && (
+        {filteredAdminItems.length > 0 && (
           <>
             <div className="h-px bg-border my-3" />
-            {ADMIN_ITEMS.map((item) => (
+            {filteredAdminItems.map((item) => (
               <NavItem key={item.to} item={item} />
             ))}
           </>
