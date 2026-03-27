@@ -64,7 +64,7 @@ export default function MovimientosPage() {
     fetchLatest();
   }, []);
 
-  // Set active upload from URL param
+  // Set active upload only from URL param
   useEffect(() => {
     if (uploadParam) {
       supabase
@@ -75,17 +75,10 @@ export default function MovimientosPage() {
         .then(({ data }) => {
           if (data) setActiveUpload({ id: data.id, nombre: data.nombre_archivo });
         });
-    } else if (latestUploadId) {
-      supabase
-        .from("excel_uploads")
-        .select("id, nombre_archivo")
-        .eq("id", latestUploadId)
-        .single()
-        .then(({ data }) => {
-          if (data) setActiveUpload({ id: data.id, nombre: data.nombre_archivo });
-        });
+    } else {
+      setActiveUpload(null);
     }
-  }, [uploadParam, latestUploadId]);
+  }, [uploadParam]);
 
   const effectiveUploadId = uploadParam || activeUpload?.id || null;
 
