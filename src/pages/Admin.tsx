@@ -58,8 +58,10 @@ export default function AdminPage() {
   const { user } = useAuth();
   const isDevAdmin = user?.rol === "SUPER_ADMIN_DEV";
   const isSuperAdmin = user?.rol === "SUPER_ADMIN" || isDevAdmin;
+  const isAdmin = user?.rol === "ADMIN";
+  const hasAccess = isSuperAdmin || isAdmin;
 
-  if (!isSuperAdmin) {
+  if (!hasAccess) {
     return <EmptyState icon={Settings} title="Acceso denegado" description="Solo administradores pueden acceder a esta sección." />;
   }
 
@@ -72,7 +74,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-xl font-semibold">Administración</h1>
           <p className="text-sm text-muted-foreground">
-            {isDevAdmin ? "Usuarios, IA y configuración del sistema" : "Gestión de usuarios"}
+            {isDevAdmin ? "Usuarios, módulos, IA y configuración del sistema" : isSuperAdmin ? "Usuarios y módulos" : "Gestión de usuarios"}
           </p>
         </div>
         {isDevAdmin && (
@@ -87,6 +89,11 @@ export default function AdminPage() {
           <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
             <Users className="h-4 w-4" /> Usuarios
           </TabsTrigger>
+          {isSuperAdmin && (
+            <TabsTrigger value="modules" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+              <LayoutGrid className="h-4 w-4" /> Módulos
+            </TabsTrigger>
+          )}
           {isDevAdmin && (
             <>
               <TabsTrigger value="llm" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
@@ -100,6 +107,9 @@ export default function AdminPage() {
         </TabsList>
 
         <TabsContent value="users"><UsersTab /></TabsContent>
+        {isSuperAdmin && (
+          <TabsContent value="modules"><ModulesTab /></TabsContent>
+        )}
         {isDevAdmin && (
           <>
             <TabsContent value="llm"><LLMTab /></TabsContent>
