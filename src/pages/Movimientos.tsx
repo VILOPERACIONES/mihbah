@@ -46,8 +46,10 @@ export default function MovimientosPage() {
   const [activeUpload, setActiveUpload] = useState<{ id: string; nombre: string } | null>(null);
   const [latestUploadId, setLatestUploadId] = useState<string | null>(null);
 
-  // Determine which upload_id to filter by
+  // Determine filters from URL params
   const uploadParam = searchParams.get("upload");
+  const proyectoParam = searchParams.get("proyecto");
+  const cuentaParam = searchParams.get("cuenta");
 
   // Load latest upload on mount
   useEffect(() => {
