@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, Pencil, Shield, ShieldCheck, RefreshCw, Loader2, LayoutGrid } from "lucide-react";
+import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, Pencil, Shield, ShieldCheck, RefreshCw, Loader2, LayoutGrid, AlertTriangle, DatabaseZap } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ALL_MODULES, type ModuleKey } from "@/hooks/useModuleAccess";
@@ -53,6 +54,51 @@ interface AgentSkill {
 const EMPRESAS_OPTIONS = ["BM CORP", "MIHBAH", "YCDI"];
 const ROL_OPTIONS = ["SUPER_ADMIN_DEV", "SUPER_ADMIN", "ADMIN", "VIEWER"] as const;
 
+// ── Wipe DB Button (SUPER_ADMIN_DEV only) ───────────────────
+function WipeDbButton() {
+  const [wiping, setWiping] = useState(false);
+
+  const handleWipe = async () => {
+    setWiping(true);
+    try {
+      const { error } = await supabase.rpc("wipe_financial_data");
+      if (error) throw error;
+      toast.success("Base de datos limpiada correctamente");
+    } catch (e: any) {
+      toast.error("Error al limpiar: " + (e.message || "desconocido"));
+    } finally {
+      setWiping(false);
+    }
+  };
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" size="sm" className="gap-2">
+          <DatabaseZap className="h-4 w-4" /> Limpiar BD
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" /> ¿Limpiar toda la base de datos?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción eliminará <strong>todos los movimientos</strong> y el <strong>historial de cargas Excel</strong>. No se puede deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleWipe} disabled={wiping} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {wiping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+            Sí, limpiar todo
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────
 export default function AdminPage() {
   const { user } = useAuth();
@@ -78,9 +124,12 @@ export default function AdminPage() {
           </p>
         </div>
         {isDevAdmin && (
-          <Badge className="ml-auto bg-primary/20 text-primary border-primary/30 gap-1">
-            <ShieldCheck className="h-3 w-3" /> DEV ADMIN
-          </Badge>
+          <div className="ml-auto flex items-center gap-2">
+            <WipeDbButton />
+            <Badge className="bg-primary/20 text-primary border-primary/30 gap-1">
+              <ShieldCheck className="h-3 w-3" /> DEV ADMIN
+            </Badge>
+          </div>
         )}
       </div>
 
