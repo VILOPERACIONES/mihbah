@@ -18,6 +18,7 @@ interface ProyectoData {
 }
 
 export default function ProyectosPage() {
+  const navigate = useNavigate();
   const { empresaActiva } = useAppStore();
   const [proyectos, setProyectos] = useState<ProyectoData[]>([]);
   const [loading, setLoading] = useState(true);
