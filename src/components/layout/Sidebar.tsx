@@ -46,10 +46,7 @@ export function AppSidebar({ onClose, collapsed = false }: SidebarProps) {
   const location = useLocation();
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {
-    if (!allowedModules.includes(item.module as any)) return false;
-    // Restrict "Cargas Excel" to SUPER_ADMIN_DEV only
-    if (item.to === "/cargas" && user?.rol !== "SUPER_ADMIN_DEV") return false;
-    return true;
+    return allowedModules.includes(item.module as any);
   });
   const filteredAdminItems = ADMIN_ITEMS.filter((item) => allowedModules.includes(item.module as any));
 
