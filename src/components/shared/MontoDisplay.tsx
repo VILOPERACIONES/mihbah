@@ -11,8 +11,8 @@ interface MontoDisplayProps {
 export function formatMonto(n: number, showMXN = false): string {
   const abs = Math.abs(n);
   const formatted = abs.toLocaleString("es-MX", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
   return `$${formatted}${showMXN ? " MXN" : ""}`;
 }
