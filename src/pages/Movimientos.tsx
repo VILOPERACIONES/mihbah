@@ -49,7 +49,7 @@ export default function MovimientosPage() {
   // Determine which upload_id to filter by
   const uploadParam = searchParams.get("upload");
 
-  // Load latest upload on mount
+  // Load latest upload id for reference only
   useEffect(() => {
     async function fetchLatest() {
       const { data } = await supabase
@@ -59,9 +59,6 @@ export default function MovimientosPage() {
         .limit(1);
       if (data && data.length > 0) {
         setLatestUploadId(data[0].id);
-        if (!uploadParam) {
-          setActiveUpload({ id: data[0].id, nombre: data[0].nombre_archivo });
-        }
       }
     }
     fetchLatest();
