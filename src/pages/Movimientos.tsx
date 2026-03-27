@@ -46,7 +46,7 @@ export default function MovimientosPage() {
   const [activeUpload, setActiveUpload] = useState<{ id: string; nombre: string } | null>(null);
   const [latestUploadId, setLatestUploadId] = useState<string | null>(null);
 
-  // Determine filters from URL params
+  // Determine which upload_id to filter by
   const uploadParam = searchParams.get("upload");
 
   // Load latest upload on mount
@@ -144,9 +144,9 @@ export default function MovimientosPage() {
 
   return (
     <div className="space-y-4">
-      {/* Active filters indicator */}
+      {/* Active upload indicator */}
       {activeUpload && (
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
             📄 {activeUpload.nombre}
           </Badge>

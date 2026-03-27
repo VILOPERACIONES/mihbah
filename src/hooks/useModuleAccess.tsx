@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 export const ALL_MODULES = [
   { key: "dashboard", label: "Dashboard" },
   { key: "movimientos", label: "Movimientos" },
-  { key: "cargas", label: "Cargas Excel" },
   { key: "flujo", label: "Flujo de Caja" },
   { key: "proyectos", label: "Proyectos" },
   { key: "cuentas", label: "Cuentas" },

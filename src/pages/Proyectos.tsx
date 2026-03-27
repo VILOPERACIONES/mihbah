@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/app.store";
 import { supabase } from "@/integrations/supabase/client";
 import { MontoDisplay } from "@/components/shared/MontoDisplay";
@@ -19,7 +18,6 @@ interface ProyectoData {
 
 export default function ProyectosPage() {
   const { empresaActiva } = useAppStore();
-  const navigate = useNavigate();
   const [proyectos, setProyectos] = useState<ProyectoData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -88,7 +86,7 @@ export default function ProyectosPage() {
         {proyectos.map((p) => (
           <Card
             key={`${p.empresa}-${p.proyecto}`}
-            className="p-4 border-border rounded-xl"
+            className="p-4 border-border rounded-xl hover:bg-card/80 transition-colors cursor-pointer"
             style={{ background: "hsl(var(--bg-card))" }}
           >
             <div className="flex items-center gap-2 mb-3">
