@@ -15,6 +15,7 @@ interface CuentaData {
 }
 
 export default function CuentasPage() {
+  const navigate = useNavigate();
   const { empresaActiva } = useAppStore();
   const [cuentas, setCuentas] = useState<CuentaData[]>([]);
   const [loading, setLoading] = useState(true);
