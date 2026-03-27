@@ -14,6 +14,7 @@ import ProyectosPage from "@/pages/Proyectos";
 import CuentasPage from "@/pages/Cuentas";
 import ReportesPage from "@/pages/Reportes";
 import AdminPage from "@/pages/Admin";
+import CargasPage from "@/pages/Cargas";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
