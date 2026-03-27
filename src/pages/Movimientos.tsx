@@ -110,7 +110,7 @@ export default function MovimientosPage() {
     setMovs((data as Mov[]) ?? []);
     setTotal(count ?? 0);
     setLoading(false);
-  }, [empresaActiva, tipoFilter, filtroBusqueda, page, effectiveUploadId, proyectoParam, cuentaParam]);
+  }, [empresaActiva, tipoFilter, filtroBusqueda, page, effectiveUploadId]);
 
   const loadCards = useCallback(async () => {
     const baseFilter = (q: any) => {
