@@ -133,7 +133,7 @@ export default function MovimientosPage() {
       inversion: sum(inversionRes.data),
       inversionCount: inversionRes.count ?? 0,
     });
-  }, [empresaActiva, effectiveUploadId]);
+  }, [empresaActiva]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadCards(); }, [loadCards]);
