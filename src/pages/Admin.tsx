@@ -445,7 +445,7 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
   const [empresas, setEmpresas] = useState<string[]>(["*"]);
   const [loading, setLoading] = useState(false);
 
-  // Only SUPER_ADMIN_DEV can create other SUPER_ADMIN_DEV users
+  const canEditRole = user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "SUPER_ADMIN";
   const availableRoles = user?.rol === "SUPER_ADMIN_DEV" 
     ? ROL_OPTIONS 
     : (["SUPER_ADMIN", "ADMIN", "VIEWER"] as const);
