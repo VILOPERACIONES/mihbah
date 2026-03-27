@@ -14,6 +14,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
+  FileSpreadsheet,
 } from "lucide-react";
 import logoJade from "@/assets/logo-jade.png";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
