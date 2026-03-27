@@ -40,8 +40,11 @@ interface SidebarProps {
 export function AppSidebar({ onClose, collapsed = false }: SidebarProps) {
   const { user, signOut } = useAuth();
   const { sidebarCollapsed, setSidebarCollapsed } = useAppStore();
+  const { allowedModules } = useModuleAccess();
   const location = useLocation();
-  const isAdmin = user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "SUPER_ADMIN" || user?.rol === "ADMIN";
+
+  const filteredNavItems = NAV_ITEMS.filter((item) => allowedModules.includes(item.module as any));
+  const filteredAdminItems = ADMIN_ITEMS.filter((item) => allowedModules.includes(item.module as any));
 
   // On mobile overlay, never use collapsed mode
   const isCollapsed = onClose ? false : (collapsed || sidebarCollapsed);
