@@ -115,6 +115,7 @@ export default function MovimientosPage() {
   const loadCards = useCallback(async () => {
     const baseFilter = (q: any) => {
       let r = q.eq("activo", true).eq("tipo", "INGRESO");
+      if (effectiveUploadId) r = r.eq("upload_id", effectiveUploadId);
       if (empresaActiva !== "TODAS") r = r.eq("empresa", empresaActiva);
       return r;
     };
@@ -133,7 +134,7 @@ export default function MovimientosPage() {
       inversion: sum(inversionRes.data),
       inversionCount: inversionRes.count ?? 0,
     });
-  }, [empresaActiva]);
+  }, [empresaActiva, effectiveUploadId]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadCards(); }, [loadCards]);
