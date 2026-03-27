@@ -540,6 +540,104 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+// ── Modules Access Tab ──────────────────────────────────────
+function ModulesTab() {
+  const [roleAccess, setRoleAccess] = useState<Record<string, Record<string, boolean>>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  async function fetchRoleAccess() {
+    setLoading(true);
+    const { data } = await supabase.from("role_module_access").select("*");
+    const map: Record<string, Record<string, boolean>> = {};
+    data?.forEach((r: any) => {
+      if (!map[r.role]) map[r.role] = {};
+      map[r.role][r.module] = r.allowed;
+    });
+    setRoleAccess(map);
+    setLoading(false);
+  }
+
+  useEffect(() => { fetchRoleAccess(); }, []);
+
+  function toggleAccess(role: string, module: string) {
+    setRoleAccess((prev) => ({
+      ...prev,
+      [role]: { ...prev[role], [module]: !prev[role]?.[module] },
+    }));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      for (const role of ROL_OPTIONS) {
+        for (const mod of ALL_MODULES) {
+          const allowed = roleAccess[role]?.[mod.key] ?? false;
+          await supabase.from("role_module_access").upsert(
+            { role, module: mod.key, allowed } as any,
+            { onConflict: "role,module" }
+          );
+        }
+      }
+      toast.success("Acceso a módulos actualizado");
+    } catch {
+      toast.error("Error al guardar");
+    }
+    setSaving(false);
+  }
+
+  if (loading) {
+    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Configura qué módulos puede ver cada rol por defecto. Puedes hacer overrides individuales desde la edición de cada usuario.</p>
+        <Button size="sm" onClick={handleSave} disabled={saving} className="gap-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Guardar
+        </Button>
+      </div>
+
+      <Card className="border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border" style={{ background: "hsl(var(--bg-surface))" }}>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Módulo</th>
+                {ROL_OPTIONS.map((role) => (
+                  <th key={role} className="text-center px-4 py-3 font-medium text-muted-foreground">{role}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ALL_MODULES.map((mod) => (
+                <tr key={mod.key} className="border-b border-border">
+                  <td className="px-4 py-3 font-medium">{mod.label}</td>
+                  {ROL_OPTIONS.map((role) => {
+                    const allowed = roleAccess[role]?.[mod.key] ?? false;
+                    const isProtected = (role === "SUPER_ADMIN_DEV" || role === "SUPER_ADMIN") && mod.key === "admin";
+                    return (
+                      <td key={role} className="text-center px-4 py-3">
+                        <Switch
+                          checked={allowed}
+                          onCheckedChange={() => toggleAccess(role, mod.key)}
+                          disabled={isProtected}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ── LLM Connections Tab (DB-backed) ─────────────────────────
 function LLMTab() {
   const [providers, setProviders] = useState<LLMProvider[]>([]);
