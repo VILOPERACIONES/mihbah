@@ -500,22 +500,24 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="juan@empresa.mx" required className="bg-background" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={canEditRole ? "grid grid-cols-2 gap-3" : ""}>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Contraseña temporal</Label>
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 6 caracteres" required className="bg-background" />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Rol</Label>
-          <Select value={rol} onValueChange={setRol}>
-            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {availableRoles.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {canEditRole && (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Rol</Label>
+            <Select value={rol} onValueChange={setRol}>
+              <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {availableRoles.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Empresas asignadas</Label>
