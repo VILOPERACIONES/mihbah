@@ -248,14 +248,26 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
       return;
     }
 
-    // Limpiar datos existentes antes de importar
-    const { error: deleteError } = await supabase.from("movimientos").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    if (deleteError) {
-      // Si no puede borrar (permisos), continúa acumulando
-      console.warn("No se pudieron borrar movimientos existentes, se acumularán:", deleteError.message);
-    } else {
-      await supabase.from("excel_uploads").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    // Crear registro de upload primero para obtener el upload_id
+    const { data: uploadRecord, error: uploadError } = await supabase.from("excel_uploads").insert([
+      {
+        nombre_archivo: fileName,
+        total_filas: totalRaw,
+        filas_importadas: 0,
+        filas_error: 0,
+        errores_detalle: null,
+        subido_por_id: user.id,
+      },
+    ]).select("id").single();
+
+    if (uploadError || !uploadRecord) {
+      setErrores([{ fila: 0, error: "No se pudo registrar la carga: " + (uploadError?.message ?? "Error desconocido") }]);
+      setImportResult({ ok: 0, fail: filas.length });
+      setStep("done");
+      return;
     }
+
+    const uploadId = uploadRecord.id;
 
     for (let i = 0; i < filas.length; i += BATCH_SIZE) {
       const batch = filas.slice(i, i + BATCH_SIZE).map((f) => ({
@@ -273,6 +285,7 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
         proyecto: f.proyecto,
         comentario: f.comentario,
         fuente: "EXCEL",
+        upload_id: uploadId,
       }));
 
       const { error } = await supabase.from("movimientos").insert(batch);
@@ -291,16 +304,12 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
         ? ([...errores, ...batchErrors].map((item) => ({ fila: item.fila, error: item.error })) as unknown as Json)
         : null;
 
-    await supabase.from("excel_uploads").insert([
-      {
-        nombre_archivo: fileName,
-        total_filas: totalRaw,
-        filas_importadas: imported,
-        filas_error: errores.length + batchErrors.length,
-        errores_detalle: uploadErrors,
-        subido_por_id: user.id,
-      },
-    ]);
+    // Actualizar el registro de upload con los resultados
+    await supabase.from("excel_uploads").update({
+      filas_importadas: imported,
+      filas_error: errores.length + batchErrors.length,
+      errores_detalle: uploadErrors,
+    }).eq("id", uploadId);
 
     setImportResult({ ok: imported, fail: filas.length - imported });
     setErrores((prev) => [...prev, ...batchErrors]);

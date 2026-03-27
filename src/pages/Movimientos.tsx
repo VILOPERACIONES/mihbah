@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, ChevronLeft, ChevronRight, Upload, X } from "lucide-react";
 import { ModalExcelUpload } from "@/components/movimientos/ModalExcelUpload";
 import { MovimientoDetailSheet } from "@/components/movimientos/MovimientoDetailSheet";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 const TIPOS = ["INGRESO", "SALIDA", "INTERNO", "PRESTAMO"];
 const PAGE_SIZE = 50;
@@ -31,6 +33,8 @@ interface Mov {
 
 export default function MovimientosPage() {
   const { empresaActiva, filtroTipo, filtroBusqueda, setFiltro } = useAppStore();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [movs, setMovs] = useState<Mov[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -39,6 +43,54 @@ export default function MovimientosPage() {
   const [excelOpen, setExcelOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [cardData, setCardData] = useState({ ventas: 0, ventasCount: 0, inversion: 0, inversionCount: 0 });
+  const [activeUpload, setActiveUpload] = useState<{ id: string; nombre: string } | null>(null);
+  const [latestUploadId, setLatestUploadId] = useState<string | null>(null);
+
+  // Determine which upload_id to filter by
+  const uploadParam = searchParams.get("upload");
+
+  // Load latest upload on mount
+  useEffect(() => {
+    async function fetchLatest() {
+      const { data } = await supabase
+        .from("excel_uploads")
+        .select("id, nombre_archivo")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) {
+        setLatestUploadId(data[0].id);
+        if (!uploadParam) {
+          setActiveUpload({ id: data[0].id, nombre: data[0].nombre_archivo });
+        }
+      }
+    }
+    fetchLatest();
+  }, []);
+
+  // Set active upload from URL param
+  useEffect(() => {
+    if (uploadParam) {
+      supabase
+        .from("excel_uploads")
+        .select("id, nombre_archivo")
+        .eq("id", uploadParam)
+        .single()
+        .then(({ data }) => {
+          if (data) setActiveUpload({ id: data.id, nombre: data.nombre_archivo });
+        });
+    } else if (latestUploadId) {
+      supabase
+        .from("excel_uploads")
+        .select("id, nombre_archivo")
+        .eq("id", latestUploadId)
+        .single()
+        .then(({ data }) => {
+          if (data) setActiveUpload({ id: data.id, nombre: data.nombre_archivo });
+        });
+    }
+  }, [uploadParam, latestUploadId]);
+
+  const effectiveUploadId = uploadParam || activeUpload?.id || null;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +101,7 @@ export default function MovimientosPage() {
       .order("fecha", { ascending: false })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
+    if (effectiveUploadId) query = query.eq("upload_id", effectiveUploadId);
     if (empresaActiva !== "TODAS") query = query.eq("empresa", empresaActiva);
     if (tipoFilter !== "all") query = query.eq("tipo", tipoFilter as "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO");
     if (filtroBusqueda) query = query.ilike("concepto", `%${filtroBusqueda}%`);
@@ -57,11 +110,12 @@ export default function MovimientosPage() {
     setMovs((data as Mov[]) ?? []);
     setTotal(count ?? 0);
     setLoading(false);
-  }, [empresaActiva, tipoFilter, filtroBusqueda, page]);
+  }, [empresaActiva, tipoFilter, filtroBusqueda, page, effectiveUploadId]);
 
   const loadCards = useCallback(async () => {
     const baseFilter = (q: any) => {
       let r = q.eq("activo", true).eq("tipo", "INGRESO");
+      if (effectiveUploadId) r = r.eq("upload_id", effectiveUploadId);
       if (empresaActiva !== "TODAS") r = r.eq("empresa", empresaActiva);
       return r;
     };
@@ -80,7 +134,7 @@ export default function MovimientosPage() {
       inversion: sum(inversionRes.data),
       inversionCount: inversionRes.count ?? 0,
     });
-  }, [empresaActiva]);
+  }, [empresaActiva, effectiveUploadId]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadCards(); }, [loadCards]);
@@ -90,6 +144,34 @@ export default function MovimientosPage() {
 
   return (
     <div className="space-y-4">
+      {/* Active upload indicator */}
+      {activeUpload && (
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
+            📄 {activeUpload.nombre}
+          </Badge>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-muted-foreground"
+            onClick={() => {
+              setActiveUpload(null);
+              navigate("/movimientos", { replace: true });
+            }}
+          >
+            <X className="h-3 w-3 mr-1" /> Ver todos
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-muted-foreground"
+            onClick={() => navigate("/cargas")}
+          >
+            Ir a Cargas
+          </Button>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
