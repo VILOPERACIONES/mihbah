@@ -310,6 +310,7 @@ function EditUserForm({
   currentUserRole,
   onUpdateRole,
   onUpdateEmpresas,
+  onUpdateModulosOverride,
   onToggleActive,
   onClose,
 }: {
@@ -317,11 +318,16 @@ function EditUserForm({
   currentUserRole: string;
   onUpdateRole: (role: string) => void;
   onUpdateEmpresas: (empresas: string[]) => void;
+  onUpdateModulosOverride: (overrides: Record<string, boolean> | null) => void;
   onToggleActive: () => void;
   onClose: () => void;
 }) {
   const [rol, setRol] = useState(userRow.rol ?? "VIEWER");
   const [empresas, setEmpresas] = useState<string[]>(userRow.empresas);
+  const [modulosOverride, setModulosOverride] = useState<Record<string, boolean>>(
+    (userRow as any).modulos_override ?? {}
+  );
+  const canEditRole = currentUserRole === "SUPER_ADMIN_DEV" || currentUserRole === "SUPER_ADMIN";
 
   const availableRoles = currentUserRole === "SUPER_ADMIN_DEV"
     ? ROL_OPTIONS
@@ -339,19 +345,40 @@ function EditUserForm({
     }
   }
 
+  function toggleModuleOverride(mod: string) {
+    setModulosOverride((prev) => {
+      const next = { ...prev };
+      if (mod in next) {
+        delete next[mod];
+      } else {
+        next[mod] = !(prev[mod] ?? true);
+      }
+      return next;
+    });
+  }
+
+  function handleSave() {
+    if (canEditRole) onUpdateRole(rol);
+    onUpdateEmpresas(empresas);
+    const hasOverrides = Object.keys(modulosOverride).length > 0;
+    onUpdateModulosOverride(hasOverrides ? modulosOverride : null);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Rol</Label>
-        <Select value={rol} onValueChange={setRol}>
-          <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {availableRoles.map((r) => (
-              <SelectItem key={r} value={r}>{r}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {canEditRole && (
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Rol</Label>
+          <Select value={rol} onValueChange={setRol}>
+            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {availableRoles.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Empresas asignadas</Label>
         <div className="flex gap-2 flex-wrap">
@@ -366,8 +393,32 @@ function EditUserForm({
           ))}
         </div>
       </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Módulos (override individual)</Label>
+        <p className="text-xs text-muted-foreground mb-1">Deja sin marcar para usar el acceso por defecto del rol.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {ALL_MODULES.map((mod) => {
+            const hasOverride = mod.key in modulosOverride;
+            const overrideVal = modulosOverride[mod.key];
+            return (
+              <label key={mod.key} className={cn("flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 text-sm transition-colors", hasOverride ? "bg-primary/10 border border-primary/20" : "bg-muted/30")}>
+                <Checkbox
+                  checked={hasOverride}
+                  onCheckedChange={() => toggleModuleOverride(mod.key)}
+                />
+                <span className="flex-1">{mod.label}</span>
+                {hasOverride && (
+                  <Badge variant="outline" className={cn("text-[10px]", overrideVal ? "text-positive" : "text-negative")}>
+                    {overrideVal ? "Permitido" : "Bloqueado"}
+                  </Badge>
+                )}
+              </label>
+            );
+          })}
+        </div>
+      </div>
       <div className="flex gap-2">
-        <Button className="flex-1" onClick={() => { onUpdateRole(rol); onUpdateEmpresas(empresas); }}>
+        <Button className="flex-1" onClick={handleSave}>
           <Save className="h-4 w-4 mr-2" /> Guardar cambios
         </Button>
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
