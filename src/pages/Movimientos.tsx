@@ -33,6 +33,8 @@ interface Mov {
 
 export default function MovimientosPage() {
   const { empresaActiva, filtroTipo, filtroBusqueda, setFiltro } = useAppStore();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [movs, setMovs] = useState<Mov[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -41,6 +43,54 @@ export default function MovimientosPage() {
   const [excelOpen, setExcelOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [cardData, setCardData] = useState({ ventas: 0, ventasCount: 0, inversion: 0, inversionCount: 0 });
+  const [activeUpload, setActiveUpload] = useState<{ id: string; nombre: string } | null>(null);
+  const [latestUploadId, setLatestUploadId] = useState<string | null>(null);
+
+  // Determine which upload_id to filter by
+  const uploadParam = searchParams.get("upload");
+
+  // Load latest upload on mount
+  useEffect(() => {
+    async function fetchLatest() {
+      const { data } = await supabase
+        .from("excel_uploads")
+        .select("id, nombre_archivo")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) {
+        setLatestUploadId(data[0].id);
+        if (!uploadParam) {
+          setActiveUpload({ id: data[0].id, nombre: data[0].nombre_archivo });
+        }
+      }
+    }
+    fetchLatest();
+  }, []);
+
+  // Set active upload from URL param
+  useEffect(() => {
+    if (uploadParam) {
+      supabase
+        .from("excel_uploads")
+        .select("id, nombre_archivo")
+        .eq("id", uploadParam)
+        .single()
+        .then(({ data }) => {
+          if (data) setActiveUpload({ id: data.id, nombre: data.nombre_archivo });
+        });
+    } else if (latestUploadId) {
+      supabase
+        .from("excel_uploads")
+        .select("id, nombre_archivo")
+        .eq("id", latestUploadId)
+        .single()
+        .then(({ data }) => {
+          if (data) setActiveUpload({ id: data.id, nombre: data.nombre_archivo });
+        });
+    }
+  }, [uploadParam, latestUploadId]);
+
+  const effectiveUploadId = uploadParam || activeUpload?.id || null;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +101,7 @@ export default function MovimientosPage() {
       .order("fecha", { ascending: false })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
+    if (effectiveUploadId) query = query.eq("upload_id", effectiveUploadId);
     if (empresaActiva !== "TODAS") query = query.eq("empresa", empresaActiva);
     if (tipoFilter !== "all") query = query.eq("tipo", tipoFilter as "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO");
     if (filtroBusqueda) query = query.ilike("concepto", `%${filtroBusqueda}%`);
@@ -59,7 +110,7 @@ export default function MovimientosPage() {
     setMovs((data as Mov[]) ?? []);
     setTotal(count ?? 0);
     setLoading(false);
-  }, [empresaActiva, tipoFilter, filtroBusqueda, page]);
+  }, [empresaActiva, tipoFilter, filtroBusqueda, page, effectiveUploadId]);
 
   const loadCards = useCallback(async () => {
     const baseFilter = (q: any) => {
