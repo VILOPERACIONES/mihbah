@@ -105,8 +105,6 @@ export default function MovimientosPage() {
     if (empresaActiva !== "TODAS") query = query.eq("empresa", empresaActiva);
     if (tipoFilter !== "all") query = query.eq("tipo", tipoFilter as "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO");
     if (filtroBusqueda) query = query.ilike("concepto", `%${filtroBusqueda}%`);
-    if (proyectoParam) query = query.eq("proyecto", proyectoParam);
-    if (cuentaParam) query = query.eq("cuenta", cuentaParam);
 
     const { data, count } = await query;
     setMovs((data as Mov[]) ?? []);
