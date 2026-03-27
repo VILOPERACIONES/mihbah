@@ -59,6 +59,7 @@ const App = () => (
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<ModuleGuard module="dashboard"><DashboardPage /></ModuleGuard>} />
               <Route path="movimientos" element={<ModuleGuard module="movimientos"><MovimientosPage /></ModuleGuard>} />
+              <Route path="cargas" element={<ModuleGuard module="movimientos"><CargasPage /></ModuleGuard>} />
               <Route path="flujo" element={<ModuleGuard module="flujo"><FlujoPage /></ModuleGuard>} />
               <Route path="proyectos" element={<ModuleGuard module="proyectos"><ProyectosPage /></ModuleGuard>} />
               <Route path="cuentas" element={<ModuleGuard module="cuentas"><CuentasPage /></ModuleGuard>} />

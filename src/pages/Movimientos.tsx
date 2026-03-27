@@ -144,6 +144,34 @@ export default function MovimientosPage() {
 
   return (
     <div className="space-y-4">
+      {/* Active upload indicator */}
+      {activeUpload && (
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
+            📄 {activeUpload.nombre}
+          </Badge>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-muted-foreground"
+            onClick={() => {
+              setActiveUpload(null);
+              navigate("/movimientos", { replace: true });
+            }}
+          >
+            <X className="h-3 w-3 mr-1" /> Ver todos
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-muted-foreground"
+            onClick={() => navigate("/cargas")}
+          >
+            Ir a Cargas
+          </Button>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
