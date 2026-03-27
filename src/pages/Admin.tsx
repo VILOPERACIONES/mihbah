@@ -54,6 +54,51 @@ interface AgentSkill {
 const EMPRESAS_OPTIONS = ["BM CORP", "MIHBAH", "YCDI"];
 const ROL_OPTIONS = ["SUPER_ADMIN_DEV", "SUPER_ADMIN", "ADMIN", "VIEWER"] as const;
 
+// ── Wipe DB Button (SUPER_ADMIN_DEV only) ───────────────────
+function WipeDbButton() {
+  const [wiping, setWiping] = useState(false);
+
+  const handleWipe = async () => {
+    setWiping(true);
+    try {
+      const { error } = await supabase.rpc("wipe_financial_data");
+      if (error) throw error;
+      toast.success("Base de datos limpiada correctamente");
+    } catch (e: any) {
+      toast.error("Error al limpiar: " + (e.message || "desconocido"));
+    } finally {
+      setWiping(false);
+    }
+  };
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" size="sm" className="gap-2">
+          <DatabaseZap className="h-4 w-4" /> Limpiar BD
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" /> ¿Limpiar toda la base de datos?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción eliminará <strong>todos los movimientos</strong> y el <strong>historial de cargas Excel</strong>. No se puede deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleWipe} disabled={wiping} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {wiping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+            Sí, limpiar todo
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────
 export default function AdminPage() {
   const { user } = useAuth();
