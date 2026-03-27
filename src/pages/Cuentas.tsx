@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/app.store";
 import { supabase } from "@/integrations/supabase/client";
 import { MontoDisplay } from "@/components/shared/MontoDisplay";
