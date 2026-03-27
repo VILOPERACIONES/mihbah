@@ -48,6 +48,8 @@ export default function MovimientosPage() {
 
   // Determine which upload_id to filter by
   const uploadParam = searchParams.get("upload");
+  const proyectoParam = searchParams.get("proyecto");
+  const cuentaParam = searchParams.get("cuenta");
 
   // Load latest upload on mount
   useEffect(() => {
