@@ -248,6 +248,15 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
       return;
     }
 
+    // Limpiar datos existentes antes de importar
+    const { error: deleteError } = await supabase.from("movimientos").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (deleteError) {
+      // Si no puede borrar (permisos), continúa acumulando
+      console.warn("No se pudieron borrar movimientos existentes, se acumularán:", deleteError.message);
+    } else {
+      await supabase.from("excel_uploads").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    }
+
     for (let i = 0; i < filas.length; i += BATCH_SIZE) {
       const batch = filas.slice(i, i + BATCH_SIZE).map((f) => ({
         empresa: f.empresa,
