@@ -17,18 +17,19 @@ import {
 } from "lucide-react";
 import logoJade from "@/assets/logo-jade.png";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/movimientos", label: "Movimientos", icon: ArrowUpDown },
-  { to: "/flujo", label: "Flujo de Caja", icon: TrendingUp },
-  { to: "/proyectos", label: "Proyectos", icon: Hammer },
-  { to: "/cuentas", label: "Cuentas", icon: Landmark },
-  { to: "/reportes", label: "Reportes", icon: ClipboardList },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
+  { to: "/movimientos", label: "Movimientos", icon: ArrowUpDown, module: "movimientos" },
+  { to: "/flujo", label: "Flujo de Caja", icon: TrendingUp, module: "flujo" },
+  { to: "/proyectos", label: "Proyectos", icon: Hammer, module: "proyectos" },
+  { to: "/cuentas", label: "Cuentas", icon: Landmark, module: "cuentas" },
+  { to: "/reportes", label: "Reportes", icon: ClipboardList, module: "reportes" },
 ];
 
 const ADMIN_ITEMS = [
-  { to: "/admin", label: "Administración", icon: Settings },
+  { to: "/admin", label: "Administración", icon: Settings, module: "admin" },
 ];
 
 interface SidebarProps {
@@ -39,8 +40,11 @@ interface SidebarProps {
 export function AppSidebar({ onClose, collapsed = false }: SidebarProps) {
   const { user, signOut } = useAuth();
   const { sidebarCollapsed, setSidebarCollapsed } = useAppStore();
+  const { allowedModules } = useModuleAccess();
   const location = useLocation();
-  const isAdmin = user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "SUPER_ADMIN" || user?.rol === "ADMIN";
+
+  const filteredNavItems = NAV_ITEMS.filter((item) => allowedModules.includes(item.module as any));
+  const filteredAdminItems = ADMIN_ITEMS.filter((item) => allowedModules.includes(item.module as any));
 
   // On mobile overlay, never use collapsed mode
   const isCollapsed = onClose ? false : (collapsed || sidebarCollapsed);
@@ -96,14 +100,14 @@ export function AppSidebar({ onClose, collapsed = false }: SidebarProps) {
       </div>
 
       <nav className={cn("flex-1 py-3 space-y-1 overflow-y-auto", isCollapsed ? "px-2" : "px-3")}>
-        {NAV_ITEMS.map((item) => (
+        {filteredNavItems.map((item) => (
           <NavItem key={item.to} item={item} />
         ))}
 
-        {isAdmin && (
+        {filteredAdminItems.length > 0 && (
           <>
             <div className="h-px bg-border my-3" />
-            {ADMIN_ITEMS.map((item) => (
+            {filteredAdminItems.map((item) => (
               <NavItem key={item.to} item={item} />
             ))}
           </>

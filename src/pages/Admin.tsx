@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, Pencil, Shield, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
+import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, Pencil, Shield, ShieldCheck, RefreshCw, Loader2, LayoutGrid } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ALL_MODULES, type ModuleKey } from "@/hooks/useModuleAccess";
 
 
 // ── Types ──────────────────────────────────────────────────
@@ -57,8 +58,10 @@ export default function AdminPage() {
   const { user } = useAuth();
   const isDevAdmin = user?.rol === "SUPER_ADMIN_DEV";
   const isSuperAdmin = user?.rol === "SUPER_ADMIN" || isDevAdmin;
+  const isAdmin = user?.rol === "ADMIN";
+  const hasAccess = isSuperAdmin || isAdmin;
 
-  if (!isSuperAdmin) {
+  if (!hasAccess) {
     return <EmptyState icon={Settings} title="Acceso denegado" description="Solo administradores pueden acceder a esta sección." />;
   }
 
@@ -71,7 +74,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-xl font-semibold">Administración</h1>
           <p className="text-sm text-muted-foreground">
-            {isDevAdmin ? "Usuarios, IA y configuración del sistema" : "Gestión de usuarios"}
+            {isDevAdmin ? "Usuarios, módulos, IA y configuración del sistema" : isSuperAdmin ? "Usuarios y módulos" : "Gestión de usuarios"}
           </p>
         </div>
         {isDevAdmin && (
@@ -86,6 +89,11 @@ export default function AdminPage() {
           <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
             <Users className="h-4 w-4" /> Usuarios
           </TabsTrigger>
+          {isSuperAdmin && (
+            <TabsTrigger value="modules" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+              <LayoutGrid className="h-4 w-4" /> Módulos
+            </TabsTrigger>
+          )}
           {isDevAdmin && (
             <>
               <TabsTrigger value="llm" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
@@ -99,6 +107,9 @@ export default function AdminPage() {
         </TabsList>
 
         <TabsContent value="users"><UsersTab /></TabsContent>
+        {isSuperAdmin && (
+          <TabsContent value="modules"><ModulesTab /></TabsContent>
+        )}
         {isDevAdmin && (
           <>
             <TabsContent value="llm"><LLMTab /></TabsContent>
@@ -157,6 +168,13 @@ function UsersTab() {
     fetchUsers();
   }
 
+  async function handleUpdateModulosOverride(userId: string, overrides: Record<string, boolean> | null) {
+    const { error } = await supabase.from("profiles").update({ modulos_override: overrides } as any).eq("user_id", userId);
+    if (error) return toast.error("Error: " + error.message);
+    toast.success("Acceso a módulos actualizado");
+    fetchUsers();
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -186,8 +204,9 @@ function UsersTab() {
             <EditUserForm
               userRow={editingUser}
               currentUserRole={currentUser?.rol ?? ""}
-              onUpdateRole={(role) => { handleUpdateRole(editingUser.user_id, role); setEditingUser(null); }}
-              onUpdateEmpresas={(empresas) => { handleUpdateEmpresas(editingUser.user_id, empresas); setEditingUser(null); }}
+              onUpdateRole={(role) => { handleUpdateRole(editingUser.user_id, role); }}
+              onUpdateEmpresas={(empresas) => { handleUpdateEmpresas(editingUser.user_id, empresas); }}
+              onUpdateModulosOverride={(overrides) => { handleUpdateModulosOverride(editingUser.user_id, overrides); setEditingUser(null); }}
               onToggleActive={() => { handleToggleActive(editingUser); setEditingUser(null); }}
               onClose={() => setEditingUser(null)}
             />
@@ -299,6 +318,7 @@ function EditUserForm({
   currentUserRole,
   onUpdateRole,
   onUpdateEmpresas,
+  onUpdateModulosOverride,
   onToggleActive,
   onClose,
 }: {
@@ -306,11 +326,16 @@ function EditUserForm({
   currentUserRole: string;
   onUpdateRole: (role: string) => void;
   onUpdateEmpresas: (empresas: string[]) => void;
+  onUpdateModulosOverride: (overrides: Record<string, boolean> | null) => void;
   onToggleActive: () => void;
   onClose: () => void;
 }) {
   const [rol, setRol] = useState(userRow.rol ?? "VIEWER");
   const [empresas, setEmpresas] = useState<string[]>(userRow.empresas);
+  const [modulosOverride, setModulosOverride] = useState<Record<string, boolean>>(
+    (userRow as any).modulos_override ?? {}
+  );
+  const canEditRole = currentUserRole === "SUPER_ADMIN_DEV" || currentUserRole === "SUPER_ADMIN";
 
   const availableRoles = currentUserRole === "SUPER_ADMIN_DEV"
     ? ROL_OPTIONS
@@ -328,19 +353,40 @@ function EditUserForm({
     }
   }
 
+  function toggleModuleOverride(mod: string) {
+    setModulosOverride((prev) => {
+      const next = { ...prev };
+      if (mod in next) {
+        delete next[mod];
+      } else {
+        next[mod] = !(prev[mod] ?? true);
+      }
+      return next;
+    });
+  }
+
+  function handleSave() {
+    if (canEditRole) onUpdateRole(rol);
+    onUpdateEmpresas(empresas);
+    const hasOverrides = Object.keys(modulosOverride).length > 0;
+    onUpdateModulosOverride(hasOverrides ? modulosOverride : null);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Rol</Label>
-        <Select value={rol} onValueChange={setRol}>
-          <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {availableRoles.map((r) => (
-              <SelectItem key={r} value={r}>{r}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {canEditRole && (
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Rol</Label>
+          <Select value={rol} onValueChange={setRol}>
+            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {availableRoles.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Empresas asignadas</Label>
         <div className="flex gap-2 flex-wrap">
@@ -355,8 +401,32 @@ function EditUserForm({
           ))}
         </div>
       </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Módulos (override individual)</Label>
+        <p className="text-xs text-muted-foreground mb-1">Deja sin marcar para usar el acceso por defecto del rol.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {ALL_MODULES.map((mod) => {
+            const hasOverride = mod.key in modulosOverride;
+            const overrideVal = modulosOverride[mod.key];
+            return (
+              <label key={mod.key} className={cn("flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 text-sm transition-colors", hasOverride ? "bg-primary/10 border border-primary/20" : "bg-muted/30")}>
+                <Checkbox
+                  checked={hasOverride}
+                  onCheckedChange={() => toggleModuleOverride(mod.key)}
+                />
+                <span className="flex-1">{mod.label}</span>
+                {hasOverride && (
+                  <Badge variant="outline" className={cn("text-[10px]", overrideVal ? "text-positive" : "text-negative")}>
+                    {overrideVal ? "Permitido" : "Bloqueado"}
+                  </Badge>
+                )}
+              </label>
+            );
+          })}
+        </div>
+      </div>
       <div className="flex gap-2">
-        <Button className="flex-1" onClick={() => { onUpdateRole(rol); onUpdateEmpresas(empresas); }}>
+        <Button className="flex-1" onClick={handleSave}>
           <Save className="h-4 w-4 mr-2" /> Guardar cambios
         </Button>
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
@@ -375,7 +445,7 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
   const [empresas, setEmpresas] = useState<string[]>(["*"]);
   const [loading, setLoading] = useState(false);
 
-  // Only SUPER_ADMIN_DEV can create other SUPER_ADMIN_DEV users
+  const canEditRole = user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "SUPER_ADMIN";
   const availableRoles = user?.rol === "SUPER_ADMIN_DEV" 
     ? ROL_OPTIONS 
     : (["SUPER_ADMIN", "ADMIN", "VIEWER"] as const);
@@ -430,22 +500,24 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="juan@empresa.mx" required className="bg-background" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={canEditRole ? "grid grid-cols-2 gap-3" : ""}>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Contraseña temporal</Label>
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 6 caracteres" required className="bg-background" />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Rol</Label>
-          <Select value={rol} onValueChange={setRol}>
-            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {availableRoles.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {canEditRole && (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Rol</Label>
+            <Select value={rol} onValueChange={setRol}>
+              <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {availableRoles.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Empresas asignadas</Label>
@@ -465,6 +537,104 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
         {loading ? "Creando..." : "Crear usuario"}
       </Button>
     </form>
+  );
+}
+
+// ── Modules Access Tab ──────────────────────────────────────
+function ModulesTab() {
+  const [roleAccess, setRoleAccess] = useState<Record<string, Record<string, boolean>>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  async function fetchRoleAccess() {
+    setLoading(true);
+    const { data } = await supabase.from("role_module_access").select("*");
+    const map: Record<string, Record<string, boolean>> = {};
+    data?.forEach((r: any) => {
+      if (!map[r.role]) map[r.role] = {};
+      map[r.role][r.module] = r.allowed;
+    });
+    setRoleAccess(map);
+    setLoading(false);
+  }
+
+  useEffect(() => { fetchRoleAccess(); }, []);
+
+  function toggleAccess(role: string, module: string) {
+    setRoleAccess((prev) => ({
+      ...prev,
+      [role]: { ...prev[role], [module]: !prev[role]?.[module] },
+    }));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      for (const role of ROL_OPTIONS) {
+        for (const mod of ALL_MODULES) {
+          const allowed = roleAccess[role]?.[mod.key] ?? false;
+          await supabase.from("role_module_access").upsert(
+            { role, module: mod.key, allowed } as any,
+            { onConflict: "role,module" }
+          );
+        }
+      }
+      toast.success("Acceso a módulos actualizado");
+    } catch {
+      toast.error("Error al guardar");
+    }
+    setSaving(false);
+  }
+
+  if (loading) {
+    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Configura qué módulos puede ver cada rol por defecto. Puedes hacer overrides individuales desde la edición de cada usuario.</p>
+        <Button size="sm" onClick={handleSave} disabled={saving} className="gap-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Guardar
+        </Button>
+      </div>
+
+      <Card className="border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border" style={{ background: "hsl(var(--bg-surface))" }}>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Módulo</th>
+                {ROL_OPTIONS.map((role) => (
+                  <th key={role} className="text-center px-4 py-3 font-medium text-muted-foreground">{role}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ALL_MODULES.map((mod) => (
+                <tr key={mod.key} className="border-b border-border">
+                  <td className="px-4 py-3 font-medium">{mod.label}</td>
+                  {ROL_OPTIONS.map((role) => {
+                    const allowed = roleAccess[role]?.[mod.key] ?? false;
+                    const isProtected = (role === "SUPER_ADMIN_DEV" || role === "SUPER_ADMIN") && mod.key === "admin";
+                    return (
+                      <td key={role} className="text-center px-4 py-3">
+                        <Switch
+                          checked={allowed}
+                          onCheckedChange={() => toggleAccess(role, mod.key)}
+                          disabled={isProtected}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
   );
 }
 

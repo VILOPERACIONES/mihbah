@@ -279,6 +279,7 @@ export type Database = {
           created_at: string
           empresas: string[]
           id: string
+          modulos_override: Json | null
           nombre: string
           updated_at: string
           user_id: string
@@ -288,6 +289,7 @@ export type Database = {
           created_at?: string
           empresas?: string[]
           id?: string
+          modulos_override?: Json | null
           nombre?: string
           updated_at?: string
           user_id: string
@@ -297,9 +299,31 @@ export type Database = {
           created_at?: string
           empresas?: string[]
           id?: string
+          modulos_override?: Json | null
           nombre?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      role_module_access: {
+        Row: {
+          allowed: boolean
+          id: string
+          module: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          allowed?: boolean
+          id?: string
+          module: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          allowed?: boolean
+          id?: string
+          module?: string
+          role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
       }

@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useModuleAccess, type ModuleKey } from "@/hooks/useModuleAccess";
 import { AppShell } from "@/components/layout/AppShell";
 import LoginPage from "@/pages/Login";
 import DashboardPage from "@/pages/Dashboard";
@@ -37,6 +38,13 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ModuleGuard({ module, children }: { module: ModuleKey; children: React.ReactNode }) {
+  const { allowedModules, loading } = useModuleAccess();
+  if (loading) return null;
+  if (!allowedModules.includes(module)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -48,13 +56,13 @@ const App = () => (
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
               <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="movimientos" element={<MovimientosPage />} />
-              <Route path="flujo" element={<FlujoPage />} />
-              <Route path="proyectos" element={<ProyectosPage />} />
-              <Route path="cuentas" element={<CuentasPage />} />
-              <Route path="reportes" element={<ReportesPage />} />
-              <Route path="admin" element={<AdminPage />} />
+              <Route path="dashboard" element={<ModuleGuard module="dashboard"><DashboardPage /></ModuleGuard>} />
+              <Route path="movimientos" element={<ModuleGuard module="movimientos"><MovimientosPage /></ModuleGuard>} />
+              <Route path="flujo" element={<ModuleGuard module="flujo"><FlujoPage /></ModuleGuard>} />
+              <Route path="proyectos" element={<ModuleGuard module="proyectos"><ProyectosPage /></ModuleGuard>} />
+              <Route path="cuentas" element={<ModuleGuard module="cuentas"><CuentasPage /></ModuleGuard>} />
+              <Route path="reportes" element={<ModuleGuard module="reportes"><ReportesPage /></ModuleGuard>} />
+              <Route path="admin" element={<ModuleGuard module="admin"><AdminPage /></ModuleGuard>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
