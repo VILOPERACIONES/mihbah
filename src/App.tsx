@@ -46,6 +46,13 @@ function ModuleGuard({ module, children }: { module: ModuleKey; children: React.
   return <>{children}</>;
 }
 
+function DevOnlyGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.rol !== "SUPER_ADMIN_DEV") return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
