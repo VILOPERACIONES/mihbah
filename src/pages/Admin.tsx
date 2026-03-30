@@ -602,9 +602,15 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
 
 // ── Modules Access Tab ──────────────────────────────────────
 function ModulesTab() {
+  const { user: currentUser } = useAuth();
   const [roleAccess, setRoleAccess] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Non-DEV admins cannot see/edit the SUPER_ADMIN_DEV column
+  const visibleRoles = currentUser?.rol === "SUPER_ADMIN_DEV"
+    ? ROL_OPTIONS
+    : ROL_OPTIONS.filter((r) => r !== "SUPER_ADMIN_DEV");
 
   async function fetchRoleAccess() {
     setLoading(true);
@@ -630,7 +636,7 @@ function ModulesTab() {
   async function handleSave() {
     setSaving(true);
     try {
-      for (const role of ROL_OPTIONS) {
+      for (const role of visibleRoles) {
         for (const mod of ALL_MODULES) {
           const allowed = roleAccess[role]?.[mod.key] ?? false;
           await supabase.from("role_module_access").upsert(
@@ -666,7 +672,7 @@ function ModulesTab() {
             <thead>
               <tr className="border-b border-border" style={{ background: "hsl(var(--bg-surface))" }}>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Módulo</th>
-                {ROL_OPTIONS.map((role) => (
+                {visibleRoles.map((role) => (
                   <th key={role} className="text-center px-4 py-3 font-medium text-muted-foreground">{role}</th>
                 ))}
               </tr>
@@ -675,7 +681,7 @@ function ModulesTab() {
               {ALL_MODULES.map((mod) => (
                 <tr key={mod.key} className="border-b border-border">
                   <td className="px-4 py-3 font-medium">{mod.label}</td>
-                  {ROL_OPTIONS.map((role) => {
+                  {visibleRoles.map((role) => {
                     const allowed = roleAccess[role]?.[mod.key] ?? false;
                     const isProtected = (role === "SUPER_ADMIN_DEV" || role === "SUPER_ADMIN") && mod.key === "admin";
                     return (
