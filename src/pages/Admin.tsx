@@ -672,7 +672,7 @@ function ModulesTab() {
             <thead>
               <tr className="border-b border-border" style={{ background: "hsl(var(--bg-surface))" }}>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Módulo</th>
-                {ROL_OPTIONS.map((role) => (
+                {visibleRoles.map((role) => (
                   <th key={role} className="text-center px-4 py-3 font-medium text-muted-foreground">{role}</th>
                 ))}
               </tr>
