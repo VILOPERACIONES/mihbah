@@ -186,7 +186,7 @@ export default function MovimientosPage() {
       </div>
 
       {/* Filters */}
-      <Card className="p-3 border-border flex items-center gap-3 flex-wrap" style={{ background: "hsl(var(--bg-card))" }}>
+      <Card className="p-3 border-border flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap" style={{ background: "hsl(var(--bg-card))" }}>
         <Select value={tipoFilter} onValueChange={setTipoFilter}>
           <SelectTrigger className="w-36 bg-background border-border">
             <SelectValue placeholder="Tipo" />
