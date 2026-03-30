@@ -175,12 +175,12 @@ export default function MovimientosPage() {
         </Card>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Movimientos</h1>
+          <h1 className="text-lg md:text-xl font-semibold">Movimientos</h1>
           <p className="text-sm text-muted-foreground">{total.toLocaleString()} registros</p>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => setExcelOpen(true)}>
+        <Button size="sm" className="gap-2 w-full sm:w-auto min-h-[44px] sm:min-h-0" onClick={() => setExcelOpen(true)}>
           <Upload className="h-4 w-4" /> Cargar Excel
         </Button>
       </div>
