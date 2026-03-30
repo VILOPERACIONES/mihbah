@@ -681,7 +681,7 @@ function ModulesTab() {
               {ALL_MODULES.map((mod) => (
                 <tr key={mod.key} className="border-b border-border">
                   <td className="px-4 py-3 font-medium">{mod.label}</td>
-                  {ROL_OPTIONS.map((role) => {
+                  {visibleRoles.map((role) => {
                     const allowed = roleAccess[role]?.[mod.key] ?? false;
                     const isProtected = (role === "SUPER_ADMIN_DEV" || role === "SUPER_ADMIN") && mod.key === "admin";
                     return (
