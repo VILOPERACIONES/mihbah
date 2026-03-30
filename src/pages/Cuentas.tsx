@@ -45,8 +45,8 @@ export default function CuentasPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Cuentas</h1>
-      <div className="grid grid-cols-3 gap-4">
+      <h1 className="text-lg md:text-xl font-semibold">Cuentas</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cuentas.map((c) => (
           <Card key={c.cuenta} className="p-4 border-border rounded-xl hover:bg-card/80 transition-colors" style={{ background: "hsl(var(--bg-card))" }}>
             <div className="flex items-center gap-2 mb-3">

@@ -265,7 +265,7 @@ function UsersTab() {
 
       <Card className="border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-border" style={{ background: "hsl(var(--bg-surface))" }}>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nombre</th>

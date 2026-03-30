@@ -164,7 +164,7 @@ export default function CargasPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 w-full sm:w-auto justify-end">
                   <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => handleViewMovimientos(u.id)}>
                     <Eye className="h-4 w-4" /> Ver
                   </Button>

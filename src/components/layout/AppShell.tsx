@@ -67,8 +67,10 @@ export function AppShell() {
         {/* Mobile: main content */}
         <div className="flex-1 flex flex-col overflow-hidden lg:hidden">
           <Topbar />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
-            <Outlet />
+          <main className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 bg-background">
+            <div className="w-full max-w-screen-xl mx-auto">
+              <Outlet />
+            </div>
           </main>
         </div>
 

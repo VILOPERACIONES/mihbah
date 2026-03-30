@@ -216,7 +216,7 @@ export default function MovimientosPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[700px]">
               <thead>
                 <tr style={{ background: "hsl(var(--bg-surface))" }}>
                   {["Fecha", "Empresa", "Tipo", "Categoría", "Concepto", "Nombre", "Monto", "Cuenta", "Proyecto"].map((h) => (
