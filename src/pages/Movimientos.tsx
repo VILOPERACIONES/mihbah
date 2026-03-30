@@ -162,7 +162,7 @@ export default function MovimientosPage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingreso por Ventas</p>
           <p className="text-2xl font-semibold text-[hsl(var(--jade))]">{formatMonto(cardData.ventas)}</p>
