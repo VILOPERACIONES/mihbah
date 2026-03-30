@@ -186,10 +186,16 @@ function UsersTab() {
     const rolesMap = new Map<string, string>();
     roles?.forEach((r) => rolesMap.set(r.user_id, r.role));
 
-    const mapped = (profiles ?? []).map((p) => ({
+    let mapped = (profiles ?? []).map((p) => ({
       ...p,
       rol: rolesMap.get(p.user_id) ?? "VIEWER",
     }));
+
+    // Non-DEV admins must not see SUPER_ADMIN_DEV users
+    if (currentUser?.rol !== "SUPER_ADMIN_DEV") {
+      mapped = mapped.filter((u) => u.rol !== "SUPER_ADMIN_DEV");
+    }
+
     setUsers(mapped);
     setLoading(false);
   }
