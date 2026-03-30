@@ -145,7 +145,7 @@ export default function CargasPage() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {new Date(u.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
                     <span className="flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3 text-primary" />
                       {u.filas_importadas.toLocaleString()} filas
