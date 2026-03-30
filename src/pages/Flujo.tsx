@@ -62,9 +62,9 @@ export default function FlujoPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Flujo de Caja</h1>
+          <h1 className="text-lg md:text-xl font-semibold">Flujo de Caja</h1>
           <p className="text-sm text-muted-foreground">{empresaActiva === "TODAS" ? "Consolidado" : empresaActiva}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -122,10 +122,10 @@ export default function FlujoPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                     {/* Balance actual */}
                     <div>
-                      <p className={cn("text-3xl font-bold font-money", isPositive ? "text-[hsl(var(--jade))]" : "text-destructive")}>
+                      <p className={cn("text-xl md:text-3xl font-bold font-money", isPositive ? "text-[hsl(var(--jade))]" : "text-destructive")}>
                         {formatMonto(latest.balanceFinal)}
                       </p>
                       <div className="flex items-center gap-1 mt-1">
@@ -141,14 +141,14 @@ export default function FlujoPage() {
                     </div>
 
                     {/* Burn rate */}
-                    <div className="border-l border-border pl-6">
+                    <div className="md:border-l border-t md:border-t-0 border-border pt-4 md:pt-0 md:pl-6">
                       <p className="text-xs text-muted-foreground mb-1">Gasto Promedio / Mes</p>
                       <p className="text-lg font-semibold font-money text-foreground">{formatMonto(burnRate)}</p>
                       <p className="text-xs text-muted-foreground mt-1">en {data.length} meses</p>
                     </div>
 
                     {/* Runway */}
-                    <div className="border-l border-border pl-6">
+                    <div className="md:border-l border-t md:border-t-0 border-border pt-4 md:pt-0 md:pl-6">
                       <p className="text-xs text-muted-foreground mb-1">Runway Estimado</p>
                       <p className={cn(
                         "text-lg font-semibold",

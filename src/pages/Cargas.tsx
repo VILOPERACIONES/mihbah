@@ -104,12 +104,12 @@ export default function CargasPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Cargas de Excel</h1>
+          <h1 className="text-lg md:text-xl font-semibold">Cargas de Excel</h1>
           <p className="text-sm text-muted-foreground">{uploads.length} archivos importados</p>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => setExcelOpen(true)}>
+        <Button size="sm" className="gap-2 w-full sm:w-auto min-h-[44px] sm:min-h-0" onClick={() => setExcelOpen(true)}>
           <Upload className="h-4 w-4" /> Nueva Carga
         </Button>
       </div>
@@ -131,7 +131,7 @@ export default function CargasPage() {
             return (
               <Card
                 key={u.id}
-                className="p-4 border-border flex items-start gap-4 hover:bg-[hsl(var(--bg-card-hover))] transition-colors"
+                className="p-4 border-border flex flex-col sm:flex-row items-start gap-4 hover:bg-[hsl(var(--bg-card-hover))] transition-colors"
                 style={{ background: "hsl(var(--bg-card))" }}
               >
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -145,7 +145,7 @@ export default function CargasPage() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {new Date(u.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
                     <span className="flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3 text-primary" />
                       {u.filas_importadas.toLocaleString()} filas
@@ -164,7 +164,7 @@ export default function CargasPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 w-full sm:w-auto justify-end">
                   <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => handleViewMovimientos(u.id)}>
                     <Eye className="h-4 w-4" /> Ver
                   </Button>

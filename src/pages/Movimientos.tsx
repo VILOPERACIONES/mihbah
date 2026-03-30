@@ -162,7 +162,7 @@ export default function MovimientosPage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingreso por Ventas</p>
           <p className="text-2xl font-semibold text-[hsl(var(--jade))]">{formatMonto(cardData.ventas)}</p>
@@ -175,20 +175,20 @@ export default function MovimientosPage() {
         </Card>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Movimientos</h1>
+          <h1 className="text-lg md:text-xl font-semibold">Movimientos</h1>
           <p className="text-sm text-muted-foreground">{total.toLocaleString()} registros</p>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => setExcelOpen(true)}>
+        <Button size="sm" className="gap-2 w-full sm:w-auto min-h-[44px] sm:min-h-0" onClick={() => setExcelOpen(true)}>
           <Upload className="h-4 w-4" /> Cargar Excel
         </Button>
       </div>
 
       {/* Filters */}
-      <Card className="p-3 border-border flex items-center gap-3 flex-wrap" style={{ background: "hsl(var(--bg-card))" }}>
+      <Card className="p-3 border-border flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap" style={{ background: "hsl(var(--bg-card))" }}>
         <Select value={tipoFilter} onValueChange={setTipoFilter}>
-          <SelectTrigger className="w-36 bg-background border-border">
+          <SelectTrigger className="w-full sm:w-36 bg-background border-border">
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -197,7 +197,7 @@ export default function MovimientosPage() {
           </SelectContent>
         </Select>
 
-        <div className="relative flex-1 max-w-xs">
+        <div className="relative flex-1 w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar concepto..."
@@ -216,7 +216,7 @@ export default function MovimientosPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[700px]">
               <thead>
                 <tr style={{ background: "hsl(var(--bg-surface))" }}>
                   {["Fecha", "Empresa", "Tipo", "Categoría", "Concepto", "Nombre", "Monto", "Cuenta", "Proyecto"].map((h) => (

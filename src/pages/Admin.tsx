@@ -113,18 +113,18 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
           <Settings className="h-5 w-5 text-primary" />
         </div>
-        <div>
-          <h1 className="text-xl font-semibold">Administración</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg md:text-xl font-semibold">Administración</h1>
           <p className="text-sm text-muted-foreground">
             {isDevAdmin ? "Usuarios, módulos, IA y configuración del sistema" : isSuperAdmin ? "Usuarios y módulos" : "Gestión de usuarios"}
           </p>
         </div>
         {isDevAdmin && (
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <WipeDbButton />
             <Badge className="bg-primary/20 text-primary border-primary/30 gap-1">
               <ShieldCheck className="h-3 w-3" /> DEV ADMIN
@@ -134,7 +134,7 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="users" className="space-y-4">
-        <TabsList className="bg-card border border-border">
+        <TabsList className="bg-card border border-border flex-wrap h-auto">
           <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
             <Users className="h-4 w-4" /> Usuarios
           </TabsTrigger>
@@ -265,7 +265,7 @@ function UsersTab() {
 
       <Card className="border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-border" style={{ background: "hsl(var(--bg-surface))" }}>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nombre</th>
