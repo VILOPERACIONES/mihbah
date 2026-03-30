@@ -134,7 +134,7 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="users" className="space-y-4">
-        <TabsList className="bg-card border border-border">
+        <TabsList className="bg-card border border-border flex-wrap h-auto">
           <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
             <Users className="h-4 w-4" /> Usuarios
           </TabsTrigger>
