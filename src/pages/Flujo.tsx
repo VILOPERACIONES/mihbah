@@ -148,7 +148,7 @@ export default function FlujoPage() {
                     </div>
 
                     {/* Runway */}
-                    <div className="border-l border-border pl-6">
+                    <div className="md:border-l border-t md:border-t-0 border-border pt-4 md:pt-0 md:pl-6">
                       <p className="text-xs text-muted-foreground mb-1">Runway Estimado</p>
                       <p className={cn(
                         "text-lg font-semibold",
