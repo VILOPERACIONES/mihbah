@@ -40,7 +40,7 @@ export default function CuentasPage() {
     load();
   }, [empresaActiva]);
 
-  if (loading) return <div className="grid grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}</div>;
+  if (loading) return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}</div>;
   if (cuentas.length === 0) return <EmptyState icon={Landmark} title="Sin cuentas" description="No hay movimientos con cuenta asignada." />;
 
   return (
