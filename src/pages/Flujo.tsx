@@ -62,9 +62,9 @@ export default function FlujoPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Flujo de Caja</h1>
+          <h1 className="text-lg md:text-xl font-semibold">Flujo de Caja</h1>
           <p className="text-sm text-muted-foreground">{empresaActiva === "TODAS" ? "Consolidado" : empresaActiva}</p>
         </div>
         <div className="flex items-center gap-2">
