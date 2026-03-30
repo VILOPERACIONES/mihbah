@@ -1,12 +1,13 @@
-import { useState, useRef, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useRef, useCallback, useMemo } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { TipoChip } from "@/components/shared/TipoChip";
 import { MontoDisplay } from "@/components/shared/MontoDisplay";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, Building2, Calendar, Hash, ArrowUpDown, X } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const TIPOS_VALIDOS = ["INGRESO", "SALIDA", "INTERNO", "PRESTAMO"] as const;
