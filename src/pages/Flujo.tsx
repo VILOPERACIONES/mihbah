@@ -141,7 +141,7 @@ export default function FlujoPage() {
                     </div>
 
                     {/* Burn rate */}
-                    <div className="border-l border-border pl-6">
+                    <div className="md:border-l border-t md:border-t-0 border-border pt-4 md:pt-0 md:pl-6">
                       <p className="text-xs text-muted-foreground mb-1">Gasto Promedio / Mes</p>
                       <p className="text-lg font-semibold font-money text-foreground">{formatMonto(burnRate)}</p>
                       <p className="text-xs text-muted-foreground mt-1">en {data.length} meses</p>
