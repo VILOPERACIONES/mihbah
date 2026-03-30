@@ -113,18 +113,18 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
           <Settings className="h-5 w-5 text-primary" />
         </div>
-        <div>
-          <h1 className="text-xl font-semibold">Administración</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg md:text-xl font-semibold">Administración</h1>
           <p className="text-sm text-muted-foreground">
             {isDevAdmin ? "Usuarios, módulos, IA y configuración del sistema" : isSuperAdmin ? "Usuarios y módulos" : "Gestión de usuarios"}
           </p>
         </div>
         {isDevAdmin && (
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <WipeDbButton />
             <Badge className="bg-primary/20 text-primary border-primary/30 gap-1">
               <ShieldCheck className="h-3 w-3" /> DEV ADMIN
