@@ -131,7 +131,7 @@ export default function CargasPage() {
             return (
               <Card
                 key={u.id}
-                className="p-4 border-border flex items-start gap-4 hover:bg-[hsl(var(--bg-card-hover))] transition-colors"
+                className="p-4 border-border flex flex-col sm:flex-row items-start gap-4 hover:bg-[hsl(var(--bg-card-hover))] transition-colors"
                 style={{ background: "hsl(var(--bg-card))" }}
               >
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
