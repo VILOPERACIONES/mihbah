@@ -28,7 +28,7 @@ const SIZES = {
   sm: "text-sm",
   md: "text-base",
   lg: "text-lg",
-  xl: "text-xl md:text-2xl font-semibold",
+  xl: "text-base sm:text-lg md:text-2xl font-semibold",
 };
 
 export function MontoDisplay({ monto, tipo, showSign, className, size = "md" }: MontoDisplayProps) {
