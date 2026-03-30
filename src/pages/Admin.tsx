@@ -636,7 +636,7 @@ function ModulesTab() {
   async function handleSave() {
     setSaving(true);
     try {
-      for (const role of ROL_OPTIONS) {
+      for (const role of visibleRoles) {
         for (const mod of ALL_MODULES) {
           const allowed = roleAccess[role]?.[mod.key] ?? false;
           await supabase.from("role_module_access").upsert(
