@@ -250,19 +250,19 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {kpiCards.map((kpi) => (
-          <Card key={kpi.label} className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-2 mb-3">
-              <kpi.icon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
+          <Card key={kpi.label} className="p-3 sm:p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors overflow-hidden">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+              <kpi.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-medium truncate">{kpi.label}</span>
             </div>
             {"isPercent" in kpi && kpi.isPercent ? (
-              <span className={`font-money text-xl md:text-2xl font-semibold ${kpi.value >= 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
+              <span className={`font-money text-base sm:text-lg md:text-2xl font-semibold ${kpi.value >= 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
                 {kpi.value >= 0 ? "+" : ""}{kpi.value}%
               </span>
             ) : (
               <MontoDisplay monto={kpi.value} tipo={kpi.tipo} size="xl" />
             )}
-            <p className="text-xs text-muted-foreground mt-1">MXN</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">MXN</p>
           </Card>
         ))}
       </div>
