@@ -334,25 +334,30 @@ function UsersTab() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 hover:bg-primary/20 hover:text-primary"
-                          onClick={() => setEditingUser(u)}
-                          title="Editar"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        {!isSelf && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn("h-7 w-7", u.activo ? "hover:bg-negative/20 hover:text-negative" : "hover:bg-positive/20 hover:text-positive")}
-                            onClick={() => handleToggleActive(u)}
-                            title={u.activo ? "Desactivar" : "Activar"}
-                          >
-                            {u.activo ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                          </Button>
+                        {/* Non-DEV admins cannot edit SUPER_ADMIN_DEV users */}
+                        {!(u.rol === "SUPER_ADMIN_DEV" && currentUser?.rol !== "SUPER_ADMIN_DEV") && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 hover:bg-primary/20 hover:text-primary"
+                              onClick={() => setEditingUser(u)}
+                              title="Editar"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            {!isSelf && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn("h-7 w-7", u.activo ? "hover:bg-negative/20 hover:text-negative" : "hover:bg-positive/20 hover:text-positive")}
+                                onClick={() => handleToggleActive(u)}
+                                title={u.activo ? "Desactivar" : "Activar"}
+                              >
+                                {u.activo ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
