@@ -317,14 +317,41 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
     setStep("done");
   };
 
+  // Compute summary stats for preview
+  const previewStats = useMemo(() => {
+    if (filas.length === 0) return null;
+    const empresas = [...new Set(filas.map((f) => f.empresa))];
+    const tipos = filas.reduce<Record<string, number>>((acc, f) => {
+      acc[f.tipo] = (acc[f.tipo] || 0) + 1;
+      return acc;
+    }, {});
+    const totalIngresos = filas.filter((f) => f.tipo === "INGRESO").reduce((s, f) => s + f.monto, 0);
+    const totalSalidas = filas.filter((f) => f.tipo === "SALIDA").reduce((s, f) => s + Math.abs(f.monto), 0);
+    const periodos = [...new Set(filas.map((f) => `${f.anio}-${String(f.mes).padStart(2, "0")}`))].sort();
+    return { empresas, tipos, totalIngresos, totalSalidas, periodos };
+  }, [filas]);
+
+  const isPreviewStep = step === "preview";
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="sm:max-w-lg bg-[hsl(var(--bg-card))] border-border">
+      <DialogContent
+        className={`bg-[hsl(var(--bg-card))] border-border transition-all ${
+          isPreviewStep
+            ? "sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+            : "sm:max-w-lg"
+        }`}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
-            Importar Excel
+            {isPreviewStep ? "Validar datos antes de importar" : "Importar Excel"}
           </DialogTitle>
+          {isPreviewStep && (
+            <DialogDescription className="text-muted-foreground">
+              Revisa el resumen y la vista previa antes de confirmar la importación de <strong>{fileName}</strong>
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         {step === "select" && (
@@ -357,59 +384,138 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
           </div>
         )}
 
-        {step === "preview" && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">{filas.length.toLocaleString()} filas válidas</p>
+        {step === "preview" && previewStats && (
+          <div className="flex flex-col gap-4 overflow-hidden flex-1 min-h-0">
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg border border-border p-3 space-y-1" style={{ background: "hsl(var(--bg-surface))" }}>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Hash className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">Registros</span>
+                </div>
+                <p className="text-xl font-bold text-foreground">{filas.length.toLocaleString()}</p>
                 {errores.length > 0 && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> {errores.length} errores
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" /> {errores.length} con error
                   </p>
                 )}
               </div>
-            </div>
 
-            {/* Preview table */}
-            <div className="border border-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-[hsl(var(--bg-surface))]">
-                    {["Empresa", "Tipo", "Concepto", "Monto"].map((h) => (
-                      <th key={h} className="px-3 py-1.5 text-left font-medium text-muted-foreground">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filas.slice(0, 5).map((f, i) => (
-                    <tr key={i} className="border-t border-border">
-                      <td className="px-3 py-1.5">{f.empresa}</td>
-                      <td className="px-3 py-1.5"><TipoChip tipo={f.tipo} /></td>
-                      <td className="px-3 py-1.5 max-w-[150px] truncate">{f.concepto}</td>
-                      <td className="px-3 py-1.5"><MontoDisplay monto={f.monto} tipo={f.tipo} size="sm" /></td>
-                    </tr>
+              <div className="rounded-lg border border-border p-3 space-y-1" style={{ background: "hsl(var(--bg-surface))" }}>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">Empresas</span>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {previewStats.empresas.map((e) => (
+                    <Badge key={e} variant="secondary" className="text-xs px-1.5 py-0">{e}</Badge>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-3 space-y-1" style={{ background: "hsl(var(--bg-surface))" }}>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">Períodos</span>
+                </div>
+                <p className="text-sm font-semibold text-foreground">
+                  {previewStats.periodos.length === 1
+                    ? previewStats.periodos[0]
+                    : `${previewStats.periodos[0]} → ${previewStats.periodos[previewStats.periodos.length - 1]}`}
+                </p>
+                <p className="text-xs text-muted-foreground">{previewStats.periodos.length} mes(es)</p>
+              </div>
+
+              <div className="rounded-lg border border-border p-3 space-y-1" style={{ background: "hsl(var(--bg-surface))" }}>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">Totales</span>
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Ingresos</span>
+                    <MontoDisplay monto={previewStats.totalIngresos} tipo="INGRESO" size="sm" />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Salidas</span>
+                    <MontoDisplay monto={-previewStats.totalSalidas} tipo="SALIDA" size="sm" />
+                  </div>
+                </div>
+              </div>
             </div>
 
+            {/* Tipo breakdown */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground font-medium">Tipos:</span>
+              {Object.entries(previewStats.tipos).map(([tipo, count]) => (
+                <div key={tipo} className="flex items-center gap-1.5">
+                  <TipoChip tipo={tipo as FilaParsed["tipo"]} />
+                  <span className="text-xs text-muted-foreground">{count}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Data table */}
+            <div className="border border-border rounded-lg overflow-hidden flex-1 min-h-0">
+              <div className="overflow-auto max-h-[40vh]">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 z-10">
+                    <tr style={{ background: "hsl(var(--bg-surface))" }}>
+                      {["#", "Empresa", "Fecha", "Tipo", "Categoría", "Concepto", "Cuenta", "Monto"].map((h) => (
+                        <th key={h} className="px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap border-b border-border">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filas.slice(0, 50).map((f, i) => (
+                      <tr key={i} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-1.5 text-muted-foreground tabular-nums">{i + 1}</td>
+                        <td className="px-3 py-1.5 font-medium whitespace-nowrap">{f.empresa}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">
+                          {new Date(f.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                        </td>
+                        <td className="px-3 py-1.5"><TipoChip tipo={f.tipo} /></td>
+                        <td className="px-3 py-1.5 text-muted-foreground max-w-[120px] truncate">{f.categoria ?? "—"}</td>
+                        <td className="px-3 py-1.5 max-w-[200px] truncate">{f.concepto}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">{f.cuenta ?? "—"}</td>
+                        <td className="px-3 py-1.5 text-right"><MontoDisplay monto={f.monto} tipo={f.tipo} size="sm" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filas.length > 50 && (
+                <div className="px-3 py-2 text-xs text-muted-foreground text-center border-t border-border" style={{ background: "hsl(var(--bg-surface))" }}>
+                  Mostrando 50 de {filas.length.toLocaleString()} registros
+                </div>
+              )}
+            </div>
+
+            {/* Errors */}
             {errores.length > 0 && (
               <details className="text-xs">
-                <summary className="cursor-pointer text-muted-foreground">Ver errores ({errores.length})</summary>
-                <div className="mt-2 max-h-28 overflow-y-auto space-y-1 text-muted-foreground">
+                <summary className="cursor-pointer text-destructive font-medium flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {errores.length} filas con errores (no se importarán)
+                </summary>
+                <div className="mt-2 max-h-28 overflow-y-auto space-y-1 text-muted-foreground rounded-lg border border-border p-2" style={{ background: "hsl(var(--bg-surface))" }}>
                   {errores.slice(0, 20).map((e, i) => (
-                    <p key={i}>Fila {e.fila}: {e.error}</p>
+                    <p key={i}><span className="font-medium text-foreground">Fila {e.fila}:</span> {e.error}</p>
                   ))}
+                  {errores.length > 20 && <p className="text-muted-foreground italic">... y {errores.length - 20} más</p>}
                 </div>
               </details>
             )}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={handleClose}>Cancelar</Button>
-              <Button onClick={handleImport} className="gap-2">
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-border shrink-0">
+              <Button variant="ghost" onClick={handleClose} className="gap-1.5">
+                <X className="h-3.5 w-3.5" />
+                Cancelar
+              </Button>
+              <Button onClick={handleImport} className="gap-2" disabled={filas.length === 0}>
                 <Upload className="h-4 w-4" />
-                Importar {filas.length.toLocaleString()} registros
+                Confirmar importación ({filas.length.toLocaleString()} registros)
               </Button>
             </div>
           </div>
