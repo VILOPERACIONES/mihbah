@@ -37,32 +37,34 @@ export function AppShell() {
         )}
 
         {/* Desktop: resizable main + chat */}
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="flex-1 hidden lg:flex"
-        >
-          <ResizablePanel defaultSize={chatOpen ? 70 : 100} minSize={40}>
-            <div className="flex flex-col h-full overflow-hidden">
-              <Topbar />
-              <main className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 bg-background">
-                <div className="w-full max-w-screen-xl mx-auto">
-                  <Outlet />
-                </div>
-              </main>
-            </div>
-          </ResizablePanel>
+        <div className="hidden lg:flex flex-1">
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="flex-1"
+          >
+            <ResizablePanel defaultSize={chatOpen ? 70 : 100} minSize={40}>
+              <div className="flex flex-col h-full overflow-hidden">
+                <Topbar />
+                <main className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 bg-background">
+                  <div className="w-full max-w-screen-xl mx-auto">
+                    <Outlet />
+                  </div>
+                </main>
+              </div>
+            </ResizablePanel>
 
-          {chatOpen && (
-            <>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-                <div className="h-full flex flex-col bg-[hsl(var(--bg-surface))]">
-                  <ChatPanel onClose={() => setChatOpen(false)} />
-                </div>
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
+            {chatOpen && (
+              <>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+                  <div className="h-full flex flex-col bg-[hsl(var(--bg-surface))]">
+                    <ChatPanel onClose={() => setChatOpen(false)} />
+                  </div>
+                </ResizablePanel>
+              </>
+            )}
+          </ResizablePanelGroup>
+        </div>
 
         {/* Mobile: main content */}
         <div className="flex-1 flex flex-col overflow-hidden lg:hidden">
