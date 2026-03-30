@@ -602,9 +602,15 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
 
 // ── Modules Access Tab ──────────────────────────────────────
 function ModulesTab() {
+  const { user: currentUser } = useAuth();
   const [roleAccess, setRoleAccess] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Non-DEV admins cannot see/edit the SUPER_ADMIN_DEV column
+  const visibleRoles = currentUser?.rol === "SUPER_ADMIN_DEV"
+    ? ROL_OPTIONS
+    : ROL_OPTIONS.filter((r) => r !== "SUPER_ADMIN_DEV");
 
   async function fetchRoleAccess() {
     setLoading(true);
