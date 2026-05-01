@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAppStore } from "@/store/app.store";
-import { supabase } from "@/integrations/supabase/client";
 import { MontoDisplay, formatMonto } from "@/components/shared/MontoDisplay";
 import { TipoChip } from "@/components/shared/TipoChip";
 import { Card } from "@/components/ui/card";
@@ -31,8 +30,15 @@ interface Mov {
   proyecto: string | null;
 }
 
+interface CardData {
+  ventas: number;
+  ventasCount: number;
+  inversion: number;
+  inversionCount: number;
+}
+
 export default function MovimientosPage() {
-  const { empresaActiva, filtroTipo, filtroBusqueda, setFiltro } = useAppStore();
+  const { empresaActiva, filtroBusqueda, setFiltro, dataVersion } = useAppStore();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [movs, setMovs] = useState<Mov[]>([]);
@@ -42,88 +48,58 @@ export default function MovimientosPage() {
   const [tipoFilter, setTipoFilter] = useState("all");
   const [excelOpen, setExcelOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [cardData, setCardData] = useState({ ventas: 0, ventasCount: 0, inversion: 0, inversionCount: 0 });
+  const [cardData, setCardData] = useState<CardData>({ ventas: 0, ventasCount: 0, inversion: 0, inversionCount: 0 });
   const [activeUpload, setActiveUpload] = useState<{ id: string; nombre: string } | null>(null);
-  const [latestUploadId, setLatestUploadId] = useState<string | null>(null);
 
-  // Determine which upload_id to filter by
   const uploadParam = searchParams.get("upload");
 
-  // Load latest upload id for reference only
-  useEffect(() => {
-    async function fetchLatest() {
-      const { data } = await supabase
-        .from("excel_uploads")
-        .select("id, nombre_archivo")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (data && data.length > 0) {
-        setLatestUploadId(data[0].id);
-      }
-    }
-    fetchLatest();
-  }, []);
-
-  // Set active upload only from URL param
+  // Resolve upload name when URL param changes
   useEffect(() => {
     if (uploadParam) {
-      supabase
-        .from("excel_uploads")
-        .select("id, nombre_archivo")
-        .eq("id", uploadParam)
-        .single()
-        .then(({ data }) => {
-          if (data) setActiveUpload({ id: data.id, nombre: data.nombre_archivo });
-        });
+      fetch(`/api/movimientos/cargas/${uploadParam}`, { credentials: "include" })
+        .then((r) => r.json())
+        .then(({ carga }) => {
+          if (carga) setActiveUpload({ id: carga.id, nombre: carga.nombreArchivo });
+        })
+        .catch(() => {});
     } else {
       setActiveUpload(null);
     }
   }, [uploadParam]);
 
-  const effectiveUploadId = uploadParam || activeUpload?.id || null;
+  const effectiveUploadId = uploadParam ?? activeUpload?.id ?? null;
 
   const load = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from("movimientos")
-      .select("id, fecha, empresa, tipo, categoria, grupo, concepto, nombre, monto, cuenta, proyecto", { count: "exact" })
-      .eq("activo", true)
-      .order("fecha", { ascending: false })
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    try {
+      const params = new URLSearchParams({ page: String(page) });
+      if (effectiveUploadId) params.set("upload_id", effectiveUploadId);
+      if (empresaActiva !== "TODAS") params.set("empresa", empresaActiva);
+      if (tipoFilter !== "all") params.set("tipo", tipoFilter);
+      if (filtroBusqueda) params.set("busqueda", filtroBusqueda);
 
-    if (effectiveUploadId) query = query.eq("upload_id", effectiveUploadId);
-    if (empresaActiva !== "TODAS") query = query.eq("empresa", empresaActiva);
-    if (tipoFilter !== "all") query = query.eq("tipo", tipoFilter as "INGRESO" | "SALIDA" | "INTERNO" | "PRESTAMO");
-    if (filtroBusqueda) query = query.ilike("concepto", `%${filtroBusqueda}%`);
-
-    const { data, count } = await query;
-    setMovs((data as Mov[]) ?? []);
-    setTotal(count ?? 0);
+      const res = await fetch(`/api/movimientos?${params}`, { credentials: "include" });
+      const { movimientos: data, total: count } = await res.json() as { movimientos: Mov[]; total: number };
+      setMovs(data ?? []);
+      setTotal(count ?? 0);
+    } catch {
+      setMovs([]);
+      setTotal(0);
+    }
     setLoading(false);
-  }, [empresaActiva, tipoFilter, filtroBusqueda, page, effectiveUploadId]);
+  }, [empresaActiva, tipoFilter, filtroBusqueda, page, effectiveUploadId, dataVersion]);
 
   const loadCards = useCallback(async () => {
-    const baseFilter = (q: any) => {
-      let r = q.eq("activo", true).eq("tipo", "INGRESO");
-      if (empresaActiva !== "TODAS") r = r.eq("empresa", empresaActiva);
-      return r;
-    };
-
-    const [ventasRes, inversionRes] = await Promise.all([
-      baseFilter(supabase.from("movimientos").select("monto", { count: "exact" }))
-        .eq("categoria", "CLIENTES"),
-      baseFilter(supabase.from("movimientos").select("monto", { count: "exact" }))
-        .in("categoria", ["ACCIONISTAS", "SOCIOS", "EMPRESA"]),
-    ]);
-
-    const sum = (rows: any[] | null) => (rows ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
-    setCardData({
-      ventas: sum(ventasRes.data),
-      ventasCount: ventasRes.count ?? 0,
-      inversion: sum(inversionRes.data),
-      inversionCount: inversionRes.count ?? 0,
-    });
-  }, [empresaActiva]);
+    try {
+      const params = new URLSearchParams();
+      if (empresaActiva !== "TODAS") params.set("empresa", empresaActiva);
+      const res = await fetch(`/api/movimientos/cards?${params}`, { credentials: "include" });
+      const data = await res.json() as CardData;
+      setCardData(data);
+    } catch {
+      setCardData({ ventas: 0, ventasCount: 0, inversion: 0, inversionCount: 0 });
+    }
+  }, [empresaActiva, dataVersion]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadCards(); }, [loadCards]);
@@ -133,7 +109,6 @@ export default function MovimientosPage() {
 
   return (
     <div className="space-y-4">
-      {/* Active upload indicator */}
       {activeUpload && (
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5">
@@ -161,7 +136,6 @@ export default function MovimientosPage() {
         </div>
       )}
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="p-5 border-border flex flex-col gap-1" style={{ background: "hsl(var(--bg-card))" }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingreso por Ventas</p>
@@ -185,7 +159,6 @@ export default function MovimientosPage() {
         </Button>
       </div>
 
-      {/* Filters */}
       <Card className="p-3 border-border flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap" style={{ background: "hsl(var(--bg-card))" }}>
         <Select value={tipoFilter} onValueChange={setTipoFilter}>
           <SelectTrigger className="w-full sm:w-36 bg-background border-border">
@@ -208,7 +181,6 @@ export default function MovimientosPage() {
         </div>
       </Card>
 
-      {/* Table */}
       <Card className="border-border rounded-xl overflow-hidden" style={{ background: "hsl(var(--bg-card))" }}>
         {loading ? (
           <div className="p-4 space-y-2">
@@ -227,7 +199,13 @@ export default function MovimientosPage() {
                 </tr>
               </thead>
               <tbody>
-                {movs.map((m, i) => (
+                {movs.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      Sin movimientos para los filtros seleccionados
+                    </td>
+                  </tr>
+                ) : movs.map((m, i) => (
                   <tr
                     key={m.id}
                     className="border-t border-border hover:bg-[hsl(var(--bg-card-hover))] transition-colors cursor-pointer"
@@ -250,10 +228,11 @@ export default function MovimientosPage() {
           </div>
         )}
 
-        {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            Mostrando {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, total)} de {total.toLocaleString()}
+            {total > 0
+              ? `Mostrando ${page * PAGE_SIZE + 1}-${Math.min((page + 1) * PAGE_SIZE, total)} de ${total.toLocaleString()}`
+              : "Sin resultados"}
           </p>
           <div className="flex items-center gap-2">
             <Button size="icon" variant="ghost" disabled={page === 0} onClick={() => setPage(page - 1)}>

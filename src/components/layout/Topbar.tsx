@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app.store";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { Menu, MessageCircle, Upload, ChevronsUpDown, Check, Building2 } from "lucide-react";
 import { ModalExcelUpload } from "@/components/movimientos/ModalExcelUpload";
 import {
@@ -20,31 +19,31 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
+interface EmpresaOption {
+  id: string;
+  nombre: string;
+}
+
 export function Topbar() {
   const { empresaActiva, setEmpresaActiva, setSidebarOpen, chatOpen, setChatOpen } = useAppStore();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showUpload, setShowUpload] = useState(false);
   const [empresaOpen, setEmpresaOpen] = useState(false);
-  const [empresas, setEmpresas] = useState<string[]>([]);
+  const [empresas, setEmpresas] = useState<EmpresaOption[]>([]);
 
   useEffect(() => {
     async function loadEmpresas() {
-      const { data } = await supabase
-        .from("movimientos")
-        .select("empresa")
-        .eq("activo", true);
-      if (data) {
-        const unique = [...new Set(data.map((m) => m.empresa))].sort();
-        setEmpresas(unique);
-      }
+      try {
+        const res = await fetch("/api/empresas", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setEmpresas(data.empresas ?? []);
+        }
+      } catch {}
     }
     loadEmpresas();
-  }, []);
-
-  const allowedEmpresas = user?.empresas.includes("*")
-    ? empresas
-    : empresas.filter((e) => user?.empresas.includes(e));
+  }, [user]);
 
   const canUpload = user?.rol === "SUPER_ADMIN" || user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "ADMIN";
   const displayLabel = empresaActiva === "TODAS" ? "Todas las empresas" : empresaActiva;
@@ -71,7 +70,7 @@ export function Topbar() {
             <Command>
               <CommandInput placeholder="Buscar empresa..." className="h-9" />
               <CommandList>
-                <CommandEmpty>No se encontro empresa.</CommandEmpty>
+                <CommandEmpty>No se encontró empresa.</CommandEmpty>
                 <CommandGroup>
                   <CommandItem
                     value="TODAS"
@@ -80,14 +79,14 @@ export function Topbar() {
                     <Check className={cn("mr-2 h-3.5 w-3.5", empresaActiva === "TODAS" ? "opacity-100" : "opacity-0")} />
                     Todas las empresas
                   </CommandItem>
-                  {allowedEmpresas.map((emp) => (
+                  {empresas.map((emp) => (
                     <CommandItem
-                      key={emp}
-                      value={emp}
-                      onSelect={() => { setEmpresaActiva(emp); setEmpresaOpen(false); }}
+                      key={emp.id}
+                      value={emp.nombre}
+                      onSelect={() => { setEmpresaActiva(emp.nombre); setEmpresaOpen(false); }}
                     >
-                      <Check className={cn("mr-2 h-3.5 w-3.5", empresaActiva === emp ? "opacity-100" : "opacity-0")} />
-                      {emp}
+                      <Check className={cn("mr-2 h-3.5 w-3.5", empresaActiva === emp.nombre ? "opacity-100" : "opacity-0")} />
+                      {emp.nombre}
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -109,20 +108,7 @@ export function Topbar() {
           </button>
         )}
 
-        <button
-          onClick={() => setChatOpen(!chatOpen)}
-          className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
-            chatOpen
-              ? "bg-card text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-card"
-          )}
-          title={chatOpen ? "Ocultar chat" : "Mostrar chat"}
-          aria-label={chatOpen ? "Ocultar chat" : "Mostrar chat"}
-        >
-          <MessageCircle className="h-4 w-4" />
-          <span className="hidden md:inline">Chat</span>
-        </button>
+        {/* Chat button hidden until AI module is ready */}
       </header>
 
       <ModalExcelUpload

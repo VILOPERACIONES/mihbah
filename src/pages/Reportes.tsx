@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { MovimientoDetailSheet } from "@/components/movimientos/MovimientoDetailSheet";
 import { useAppStore } from "@/store/app.store";
-import { supabase } from "@/integrations/supabase/client";
 import { formatMonto, formatMontoAbreviado } from "@/components/shared/MontoDisplay";
 import { generateReportPDF } from "@/lib/generateReportPDF";
 import { Card } from "@/components/ui/card";
@@ -144,7 +143,7 @@ function DrillPanel({ items, title, onClose, onItemClick }: { items: DrillItem[]
 
 // ── Main Component ──────────────────────────────────────────
 export default function ReportesPage() {
-  const { empresaActiva } = useAppStore();
+  const { empresaActiva, dataVersion } = useAppStore();
   const [anio, setAnio] = useState(String(new Date().getFullYear()));
   const [rows, setRows] = useState<MonthData[]>([]);
   const [prevRows, setPrevRows] = useState<MonthData[]>([]);
@@ -167,58 +166,50 @@ export default function ReportesPage() {
       setDrillItems([]);
 
       const numAnio = Number(anio);
-      const [{ data: curr }, { data: prev }, { data: cats }, { data: ventaData }, { data: levData }] = await Promise.all([
-        supabase.rpc("get_flujo_mensual", { _anio_desde: numAnio, _empresa: empresa } as any),
-        supabase.rpc("get_flujo_mensual", { _anio_desde: numAnio - 1, _empresa: empresa } as any),
-        supabase.rpc("get_top_categorias", { _anio: numAnio, _mes: new Date().getMonth() + 1, _limite: 10, _empresa: empresa } as any),
-        // Income breakdown: Venta de Proyecto
-        supabase.from("movimientos")
-          .select("monto")
-          .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", numAnio)
-          .in("categoria", CATS_VENTA_PROYECTO)
-          .then(r => r),
-        // Income breakdown: Levantamiento de Capital
-        supabase.from("movimientos")
-          .select("monto")
-          .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", numAnio)
-          .in("categoria", CATS_LEVANTAMIENTO)
-          .then(r => r),
+      const empresaParam = empresa ? `&empresa=${encodeURIComponent(empresa)}` : "";
+
+      const [flujoRes, prevFlujoRes, catsRes, cardsRes] = await Promise.all([
+        fetch(`/api/dashboard/flujo?anioDesde=${numAnio}&anioHasta=${numAnio}${empresaParam}`, { credentials: "include" }),
+        fetch(`/api/dashboard/flujo?anioDesde=${numAnio - 1}&anioHasta=${numAnio - 1}${empresaParam}`, { credentials: "include" }),
+        fetch(`/api/dashboard/categorias?anio=${numAnio}&limite=10${empresaParam}`, { credentials: "include" }),
+        fetch(`/api/movimientos/cards?anio=${numAnio}${empresaParam}`, { credentials: "include" }),
       ]);
 
-      const parseRows = (data: any[], targetYear: number): MonthData[] => {
+      const { flujo: currFlujo = [] } = await flujoRes.json() as { flujo: Array<{ anio: number; mes: number; ingresos: number; salidas: number }> };
+      const { flujo: prevFlujo = [] } = await prevFlujoRes.json() as { flujo: Array<{ anio: number; mes: number; ingresos: number; salidas: number }> };
+      const { categorias: catsData = [] } = await catsRes.json() as { categorias: Array<{ categoria: string; total: number }> };
+      const { ventas = 0, inversion = 0 } = await cardsRes.json() as { ventas: number; ventasCount: number; inversion: number; inversionCount: number };
+
+      const parseRows = (flujoData: Array<{ anio: number; mes: number; ingresos: number; salidas: number }>): MonthData[] => {
         const map = new Map<number, MonthData>();
         for (let m = 1; m <= 12; m++) map.set(m, { mes: m, ingresos: 0, egresos: 0, internos: 0, prestamos: 0, resultado: 0, margen: 0 });
-        data?.filter((d: any) => d.periodo.startsWith(String(targetYear))).forEach((d: any) => {
-          const mes = parseInt(d.periodo.split("-")[1]);
-          const entry = map.get(mes);
+        flujoData.forEach((d) => {
+          const entry = map.get(d.mes);
           if (entry) {
-            entry.ingresos = Number(d.ingresos);
-            entry.egresos = Number(d.salidas);
-            entry.resultado = entry.ingresos - entry.egresos;
-            entry.margen = entry.ingresos > 0 ? ((entry.resultado) / entry.ingresos) * 100 : 0;
+            entry.ingresos = d.ingresos;
+            entry.egresos = d.salidas;
+            entry.resultado = d.ingresos - d.salidas;
+            entry.margen = d.ingresos > 0 ? ((d.ingresos - d.salidas) / d.ingresos) * 100 : 0;
           }
         });
         return [...map.values()];
       };
 
-      setRows(parseRows(curr ?? [], numAnio));
-      setPrevRows(parseRows(prev ?? [], numAnio - 1));
+      setRows(parseRows(currFlujo));
+      setPrevRows(parseRows(prevFlujo));
 
-      const totalEgr = (cats ?? []).reduce((s: number, c: any) => s + Number(c.total), 0);
-      setCategories((cats ?? []).map((c: any) => ({
-        categoria: c.categoria, total: Number(c.total),
-        pct: totalEgr > 0 ? (Number(c.total) / totalEgr) * 100 : 0,
+      const totalEgr = catsData.reduce((s, c) => s + c.total, 0);
+      setCategories(catsData.map((c) => ({
+        categoria: c.categoria, total: c.total,
+        pct: totalEgr > 0 ? (c.total / totalEgr) * 100 : 0,
       })));
 
-      // Income breakdown totals
-      const ventaTotal = (ventaData ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
-      const levTotal = (levData ?? []).reduce((s: number, r: any) => s + Number(r.monto), 0);
-      setIngresosBreakdown({ ventaProyecto: ventaTotal, levantamientoCapital: levTotal });
+      setIngresosBreakdown({ ventaProyecto: ventas, levantamientoCapital: inversion });
 
       setLoading(false);
     }
     load();
-  }, [empresaActiva, anio]);
+  }, [empresaActiva, anio, dataVersion]);
 
   // Computed totals
   const totals = useMemo(() => {
@@ -269,27 +260,22 @@ export default function ReportesPage() {
       return;
     }
     setExpandedMonth(mes);
-    let query = supabase.from("movimientos")
-      .select("id, fecha, empresa, concepto, monto, tipo, categoria")
-      .eq("activo", true).eq("anio", Number(anio)).eq("mes", mes)
-      .order("monto", { ascending: true });
-    if (empresa) query = query.eq("empresa", empresa);
-    if (tipo) query = query.eq("tipo", tipo as any);
-    const { data } = await query.limit(100);
-    setDrillItems((data as DrillItem[]) ?? []);
+    const params = new URLSearchParams({ anio, mes: String(mes), limit: "100" });
+    if (empresa) params.set("empresa", empresa);
+    if (tipo) params.set("tipo", tipo);
+    const res = await fetch(`/api/movimientos?${params}`, { credentials: "include" });
+    const { movimientos: data = [] } = await res.json() as { movimientos: DrillItem[] };
+    setDrillItems(data);
     setDrillTitle(`${MESES_FULL[mes - 1]} ${anio}${tipo ? ` — ${tipo}` : ""}`);
   }, [expandedMonth, anio, empresa]);
 
   // Drill-down for income category breakdown
-  const handleIngresosDrill = useCallback(async (categorias: string[], label: string) => {
-    let query = supabase.from("movimientos")
-      .select("id, fecha, empresa, concepto, monto, tipo, categoria")
-      .eq("activo", true).eq("tipo", "INGRESO" as any).eq("anio", Number(anio))
-      .in("categoria", categorias)
-      .order("monto", { ascending: false });
-    if (empresa) query = query.eq("empresa", empresa);
-    const { data } = await query.limit(200);
-    setDrillItems((data as DrillItem[]) ?? []);
+  const handleIngresosDrill = useCallback(async (cats: string[], label: string) => {
+    const params = new URLSearchParams({ anio, tipo: "INGRESO", limit: "200", categorias: cats.join(",") });
+    if (empresa) params.set("empresa", empresa);
+    const res = await fetch(`/api/movimientos?${params}`, { credentials: "include" });
+    const { movimientos: data = [] } = await res.json() as { movimientos: DrillItem[] };
+    setDrillItems(data);
     setDrillTitle(`Ingresos — ${label} (${anio})`);
     setExpandedMonth(null);
   }, [anio, empresa]);

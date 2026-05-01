@@ -15,23 +15,26 @@ import {
   ChevronsRight,
   LogOut,
   FileSpreadsheet,
+  RefreshCw,
 } from "lucide-react";
 import logoJade from "@/assets/logo-jade.png";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useModuleAccess } from "@/hooks/useModuleAccess";
 
+// Empresas que habilitan cada item (vacío = todas)
 const NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
-  { to: "/movimientos", label: "Movimientos", icon: ArrowUpDown, module: "movimientos" },
-  { to: "/cargas", label: "Cargas Excel", icon: FileSpreadsheet, module: "movimientos" },
-  { to: "/flujo", label: "Flujo de Caja", icon: TrendingUp, module: "flujo" },
-  { to: "/proyectos", label: "Proyectos", icon: Hammer, module: "proyectos" },
-  { to: "/cuentas", label: "Cuentas", icon: Landmark, module: "cuentas" },
-  { to: "/reportes", label: "Reportes", icon: ClipboardList, module: "reportes" },
+  { to: "/dashboard",    label: "Dashboard",       icon: LayoutDashboard, module: "dashboard",              empresas: [] },
+  { to: "/flujo",        label: "Flujo de Caja",   icon: TrendingUp,      module: "flujo_caja",             empresas: [] },
+  { to: "/proyectos",    label: "Proyectos",        icon: Hammer,          module: "proyectos",              empresas: [] },
+  { to: "/cuentas",      label: "Cuentas",          icon: Landmark,        module: "cuentas",                empresas: [] },
+  { to: "/reportes",     label: "Reportes",         icon: ClipboardList,   module: "reportes",               empresas: [] },
+  { to: "/movimientos",  label: "Movimientos",      icon: ArrowUpDown,     module: "cargas_excel",           empresas: ["MIHBAH", "YCDI"] },
+  { to: "/cargas",       label: "Cargas Excel",     icon: FileSpreadsheet, module: "cargas_excel",           empresas: ["MIHBAH", "YCDI"] },
+  { to: "/sync-monday",  label: "Sync Monday",      icon: RefreshCw,       module: "sincronizacion_monday",  empresas: ["BM CORP"] },
 ];
 
 const ADMIN_ITEMS = [
-  { to: "/admin", label: "Administración", icon: Settings, module: "admin" },
+  { to: "/admin", label: "Administración", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -41,12 +44,19 @@ interface SidebarProps {
 
 export function AppSidebar({ onClose, collapsed = false }: SidebarProps) {
   const { user, signOut } = useAuth();
-  const { sidebarCollapsed, setSidebarCollapsed } = useAppStore();
+  const { sidebarCollapsed, setSidebarCollapsed, empresaActiva } = useAppStore();
   const { allowedModules } = useModuleAccess();
   const location = useLocation();
 
-  const filteredNavItems = NAV_ITEMS.filter((item) => allowedModules.includes(item.module as any));
-  const filteredAdminItems = ADMIN_ITEMS.filter((item) => allowedModules.includes(item.module as any));
+  const filteredNavItems = NAV_ITEMS.filter((item) => {
+    if (!allowedModules.includes(item.module as any)) return false;
+    if (item.empresas.length === 0) return true; // visible para todas
+    if (empresaActiva === "TODAS") return false;  // empresa-específico: ocultar en TODAS
+    return item.empresas.includes(empresaActiva);
+  });
+
+  const isAdmin = user?.rol === "SUPER_ADMIN_DEV" || user?.rol === "SUPER_ADMIN";
+  const filteredAdminItems = isAdmin ? ADMIN_ITEMS : [];
 
   // On mobile overlay, never use collapsed mode
   const isCollapsed = onClose ? false : (collapsed || sidebarCollapsed);

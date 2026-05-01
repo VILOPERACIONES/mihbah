@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useModuleAccess, type ModuleKey } from "@/hooks/useModuleAccess";
@@ -18,6 +17,8 @@ import CargasPage from "@/pages/Cargas";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const ROLE_ORDER = ["VIEWER", "ADMIN", "SUPER_ADMIN", "SUPER_ADMIN_DEV"] as const;
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -46,10 +47,18 @@ function ModuleGuard({ module, children }: { module: ModuleKey; children: React.
   return <>{children}</>;
 }
 
+function RoleGuard({ minRole, children }: { minRole: typeof ROLE_ORDER[number]; children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  const userLevel = ROLE_ORDER.indexOf((user?.rol ?? "VIEWER") as typeof ROLE_ORDER[number]);
+  const minLevel = ROLE_ORDER.indexOf(minRole);
+  if (userLevel < minLevel) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
@@ -58,13 +67,13 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<ModuleGuard module="dashboard"><DashboardPage /></ModuleGuard>} />
-              <Route path="movimientos" element={<ModuleGuard module="movimientos"><MovimientosPage /></ModuleGuard>} />
-              <Route path="cargas" element={<ModuleGuard module="movimientos"><CargasPage /></ModuleGuard>} />
-              <Route path="flujo" element={<ModuleGuard module="flujo"><FlujoPage /></ModuleGuard>} />
+              <Route path="movimientos" element={<ModuleGuard module="cargas_excel"><MovimientosPage /></ModuleGuard>} />
+              <Route path="cargas" element={<ModuleGuard module="cargas_excel"><CargasPage /></ModuleGuard>} />
+              <Route path="flujo" element={<ModuleGuard module="flujo_caja"><FlujoPage /></ModuleGuard>} />
               <Route path="proyectos" element={<ModuleGuard module="proyectos"><ProyectosPage /></ModuleGuard>} />
               <Route path="cuentas" element={<ModuleGuard module="cuentas"><CuentasPage /></ModuleGuard>} />
               <Route path="reportes" element={<ModuleGuard module="reportes"><ReportesPage /></ModuleGuard>} />
-              <Route path="admin" element={<ModuleGuard module="admin"><AdminPage /></ModuleGuard>} />
+              <Route path="admin" element={<RoleGuard minRole="SUPER_ADMIN"><AdminPage /></RoleGuard>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

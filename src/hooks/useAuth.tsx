@@ -1,6 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 
 interface AuthUser {
   id: string;
@@ -8,6 +6,7 @@ interface AuthUser {
   nombre: string;
   rol: string;
   empresas: string[];
+  modules: string[];
 }
 
 interface AuthContextType {
@@ -15,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -23,64 +23,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function fetchProfile(authUser: User) {
-    const [{ data: profile }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", authUser.id).single(),
-      supabase.from("user_roles").select("role").eq("user_id", authUser.id),
-    ]);
-
-    const roleList = roles?.map((r: { role: string }) => r.role) ?? [];
-    const topRole = roleList.includes("SUPER_ADMIN_DEV")
-      ? "SUPER_ADMIN_DEV"
-      : roleList.includes("SUPER_ADMIN")
-      ? "SUPER_ADMIN"
-      : roleList.includes("ADMIN")
-      ? "ADMIN"
-      : "VIEWER";
-
-    setUser({
-      id: authUser.id,
-      email: authUser.email ?? "",
-      nombre: profile?.nombre ?? authUser.email ?? "",
-      rol: topRole,
-      empresas: profile?.empresas ?? ["*"],
-    });
-  }
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          setTimeout(() => fetchProfile(session.user), 0);
-        } else {
-          setUser(null);
-        }
-        setLoading(false);
+  const fetchMe = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user ?? null);
+      } else {
+        setUser(null);
       }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchProfile(session.user);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    } catch {
+      setUser(null);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchMe().finally(() => setLoading(false));
+  }, [fetchMe]);
+
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error ?? "Error al iniciar sesión" };
+      setUser(data.user);
+      return { error: null };
+    } catch {
+      return { error: "Error de conexión" };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut, refresh: fetchMe }}>
       {children}
     </AuthContext.Provider>
   );

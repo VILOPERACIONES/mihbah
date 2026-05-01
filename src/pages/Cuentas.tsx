@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/store/app.store";
-import { supabase } from "@/integrations/supabase/client";
 import { MontoDisplay } from "@/components/shared/MontoDisplay";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,27 +20,29 @@ export default function CuentasPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const args: { _empresa?: string } = {};
-      if (empresaActiva !== "TODAS") args._empresa = empresaActiva;
-
-      const { data } = await supabase.rpc("get_cuentas_resumen", args);
-
-      if (data) {
-        setCuentas(
-          (data as CuentaData[]).map((d) => ({
-            cuenta: d.cuenta,
-            saldo: Number(d.saldo),
-            count: Number(d.count),
-          }))
-        );
+      try {
+        const params = new URLSearchParams();
+        if (empresaActiva !== "TODAS") params.set("empresa", empresaActiva);
+        const res = await fetch(`/api/dashboard/cuentas-saldo?${params}`, { credentials: "include" });
+        const { cuentas: data } = await res.json() as { cuentas: CuentaData[] };
+        setCuentas(data ?? []);
+      } catch {
+        setCuentas([]);
       }
       setLoading(false);
     }
     load();
   }, [empresaActiva]);
 
-  if (loading) return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}</div>;
-  if (cuentas.length === 0) return <EmptyState icon={Landmark} title="Sin cuentas" description="No hay movimientos con cuenta asignada." />;
+  if (loading)
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+      </div>
+    );
+
+  if (cuentas.length === 0)
+    return <EmptyState icon={Landmark} title="Sin cuentas" description="No hay movimientos con cuenta asignada." />;
 
   return (
     <div className="space-y-6">
@@ -53,7 +54,7 @@ export default function CuentasPage() {
               <Landmark className="h-4 w-4 text-primary" />
               <h3 className="font-medium text-sm">{c.cuenta}</h3>
             </div>
-            <p className="text-xs text-muted-foreground mb-1">Saldo actual:</p>
+            <p className="text-xs text-muted-foreground mb-1">Saldo neto:</p>
             <MontoDisplay monto={c.saldo} showSign size="xl" />
             <p className="text-xs text-muted-foreground mt-2">{c.count} movimientos</p>
           </Card>

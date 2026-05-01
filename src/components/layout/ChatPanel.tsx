@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore } from "@/store/app.store";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Send, Bot, X, Paperclip, FileSpreadsheet, Table2, BarChart3,
   Trash2, Plus, MessageSquare, ChevronLeft, Clock
@@ -34,7 +33,7 @@ interface ConversationRow {
   created_at: string;
   updated_at: string;
   empresa: string | null;
-  mensajes: any;
+  mensajes: ChatMessage[];
 }
 
 const QUICK_QUESTIONS = [
@@ -342,35 +341,15 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevEmpresa = useRef(empresaActiva);
 
-  // Fetch active LLM config
+  // LLM config — populated in step 7 (AI assistant)
   useEffect(() => {
-    async function loadConfig() {
-      try {
-        const [{ data: provData }, { data: skillsData }] = await Promise.all([
-          supabase.from("llm_providers").select("name, models").eq("is_default", true).limit(1).single(),
-          supabase.from("agent_skills").select("name").eq("enabled", true).order("created_at"),
-        ]);
-        setChatConfig({
-          provider: provData?.name ?? "Lovable AI",
-          model: provData?.models?.[0] ?? "gemini-2.5-flash",
-          skills: (skillsData ?? []).map((s: any) => s.name),
-        });
-      } catch {}
-    }
-    loadConfig();
+    setChatConfig({ provider: "Anthropic", model: "claude-sonnet-4-6", skills: [] });
   }, []);
 
-  // Load conversations list
+  // Conversation list — in-memory only until step 7 (AI assistant + RAG)
   const loadConversations = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("conversaciones")
-      .select("id, created_at, updated_at, empresa, mensajes")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(50);
-    if (data) setConversations(data as ConversationRow[]);
-  }, [user]);
+    // populated by in-memory state; DB persistence implemented in step 7
+  }, []);
 
   useEffect(() => {
     loadConversations();
@@ -393,35 +372,10 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  // ── Persist to DB ──
-  const persistConversation = useCallback(async (msgs: ChatMessage[]) => {
-    if (!user) return;
-    const mensajes = msgs.map((m) => ({
-      role: m.role,
-      content: m.content,
-      ts: m.ts,
-      ...(m.excelData ? { excelFile: m.excelData.fileName } : {}),
-    }));
-
-    try {
-      if (activeConvId) {
-        await supabase
-          .from("conversaciones")
-          .update({ mensajes: mensajes as any, updated_at: new Date().toISOString(), empresa: empresaActiva } as any)
-          .eq("id", activeConvId);
-      } else {
-        const { data } = await supabase
-          .from("conversaciones")
-          .insert({ user_id: user.id, mensajes: mensajes as any, empresa: empresaActiva, tokens: 0 } as any)
-          .select("id")
-          .single();
-        if (data) {
-          setActiveConvId(data.id);
-        }
-      }
-      loadConversations();
-    } catch {}
-  }, [user, empresaActiva, activeConvId, loadConversations]);
+  // Persist — in-memory only until step 7
+  const persistConversation = useCallback((_msgs: ChatMessage[]) => {
+    // DB persistence implemented in step 7 (AI assistant)
+  }, []);
 
   // Load a conversation
   function loadConversation(id: string) {
@@ -447,13 +401,12 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
     setShowConversations(false);
   }
 
-  async function deleteConversation(id: string) {
-    await supabase.from("conversaciones").delete().eq("id", id);
+  function deleteConversation(id: string) {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
     if (activeConvId === id) {
       setMessages([]);
       setActiveConvId(null);
     }
-    loadConversations();
   }
 
   // ── Handle file ──
@@ -496,104 +449,20 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
     await streamResponse(texto, history);
   }
 
+  // Streaming hacia /api/chat — implementado en paso 7 (Asistente IA)
   async function streamResponse(
-    texto: string,
-    history: { role: string; content: string }[],
+    _texto: string,
+    _history: { role: string; content: string }[],
     onComplete?: (msgs: ChatMessage[]) => void
   ) {
-    let assistantSoFar = "";
-    const upsertAssistant = (chunk: string) => {
-      assistantSoFar += chunk;
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && !last.excelData) {
-          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
-        }
-        return [...prev, { role: "assistant", content: assistantSoFar, ts: Date.now() }];
-      });
-    };
-
-    try {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ mensaje: texto, empresaFiltro: empresaActiva, history }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(errData.error || `Error ${res.status}`);
-      }
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, newlineIndex);
-          buffer = buffer.slice(newlineIndex + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) upsertAssistant(content);
-          } catch {
-            buffer = line + "\n" + buffer;
-            break;
-          }
-        }
-      }
-
-      if (buffer.trim()) {
-        for (let raw of buffer.split("\n")) {
-          if (!raw) continue;
-          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
-          if (!raw.startsWith("data: ")) continue;
-          const jsonStr = raw.slice(6).trim();
-          if (jsonStr === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) upsertAssistant(content);
-          } catch {}
-        }
-      }
-
-      if (!assistantSoFar) {
-        upsertAssistant("No pude generar una respuesta. Intenta de nuevo.");
-      }
-
-      setMessages((prev) => {
-        persistConversation(prev);
-        onComplete?.(prev);
-        return prev;
-      });
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Error al conectar con el asistente.";
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && !last.excelData) {
-          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: errorMsg } : m));
-        }
-        return [...prev, { role: "assistant", content: errorMsg, ts: Date.now() }];
-      });
-    } finally {
-      setIsStreaming(false);
-    }
+    const placeholder = "El asistente **Jade AI** estará disponible en el paso 7 de la migración.\n\nPor ahora puedes explorar el sistema, cargar datos Excel y revisar los dashboards.";
+    setMessages((prev) => {
+      const updated = [...prev, { role: "assistant" as const, content: placeholder, ts: Date.now() }];
+      persistConversation(updated);
+      onComplete?.(updated);
+      return updated;
+    });
+    setIsStreaming(false);
   }
 
   // ── Render ──

@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAppStore } from "@/store/app.store";
-import { supabase } from "@/integrations/supabase/client";
 import { MontoDisplay, formatMonto, formatMontoAbreviado } from "@/components/shared/MontoDisplay";
 import { TipoChip } from "@/components/shared/TipoChip";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,8 +50,14 @@ interface CuentasDashboard {
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
+async function apiFetch<T>(path: string): Promise<T> {
+  const res = await fetch(path, { credentials: "include" });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 export default function DashboardPage() {
-  const { empresaActiva } = useAppStore();
+  const { empresaActiva, dataVersion } = useAppStore();
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [flujo, setFlujo] = useState<FlujoMes[]>([]);
   const [topCats, setTopCats] = useState<CatGasto[]>([]);
@@ -74,35 +79,31 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    async function loadPeriods() {
-      const [periodsRes, latestRes] = await Promise.all([
-        supabase.rpc("get_available_periods"),
-        supabase.rpc("get_latest_month"),
-      ]);
-      if (periodsRes.data) setAvailablePeriods(periodsRes.data as any[]);
-      if (latestRes.data?.[0]) {
-        setSelectedAnio(latestRes.data[0].anio);
-        setSelectedMes(latestRes.data[0].mes);
-      }
-      setPeriodsLoaded(true);
-    }
-    loadPeriods();
-  }, [refreshKey]);
+    apiFetch<{ periodos: { anio: number; mes: number }[] }>("/api/dashboard/periodos")
+      .then(({ periodos }) => {
+        setAvailablePeriods(periodos);
+        if (periodos.length > 0) {
+          setSelectedAnio(periodos[0].anio);
+          setSelectedMes(periodos[0].mes);
+        }
+        setPeriodsLoaded(true);
+      })
+      .catch(() => setPeriodsLoaded(true));
+  }, [refreshKey, dataVersion]);
 
   const availableYears = useMemo(() =>
-    [...new Set(availablePeriods.map(p => p.anio))].sort((a, b) => b - a),
+    [...new Set(availablePeriods.map((p) => p.anio))].sort((a, b) => b - a),
     [availablePeriods]
   );
 
   const availableMonths = useMemo(() =>
-    availablePeriods.filter(p => p.anio === selectedAnio).map(p => p.mes).sort((a, b) => a - b),
+    availablePeriods.filter((p) => p.anio === selectedAnio).map((p) => p.mes).sort((a, b) => a - b),
     [availablePeriods, selectedAnio]
   );
 
   useEffect(() => {
     if (!periodsLoaded) return;
 
-    // No periods at all — show empty state immediately
     if (!selectedAnio || !selectedMes) {
       setKpis({ ingresos: 0, salidas: 0, resultado: 0, margen: 0, conteoIngresos: 0, conteoSalidas: 0 });
       setFlujo([]);
@@ -114,73 +115,34 @@ export default function DashboardPage() {
       return;
     }
 
-    async function load() {
-      setLoading(true);
-      const empresaFilter = empresaActiva !== "TODAS" ? empresaActiva : null;
-      const anio = selectedAnio!;
-      const mes = selectedMes!;
+    const empresa = empresaActiva !== "TODAS" ? empresaActiva : "";
+    const anioDesde = selectedAnio - 2;
+    setPeriodoLabel(`${MESES[selectedMes]} ${selectedAnio}`);
 
-      setPeriodoLabel(`${MESES[mes]} ${anio}`);
+    const params = new URLSearchParams({
+      anio: String(selectedAnio),
+      mes: String(selectedMes),
+      ...(empresa ? { empresa } : {}),
+    });
 
-      const [kpiRes, flujoRes, catRes, recRes, cuentasRes] = await Promise.all([
-        supabase.rpc("get_kpis_mes", { _anio: anio, _mes: mes, _empresa: empresaFilter }),
-        supabase.rpc("get_flujo_mensual", { _anio_desde: anio - 2, _empresa: empresaFilter }),
-        supabase.rpc("get_top_categorias", { _anio: anio, _mes: mes, _limite: 8, _empresa: empresaFilter }),
-        (() => {
-          let q = supabase
-            .from("movimientos")
-            .select("id, fecha, empresa, tipo, categoria, concepto, monto")
-            .eq("activo", true)
-            .order("fecha", { ascending: false })
-            .limit(15);
-          if (empresaFilter) q = q.eq("empresa", empresaFilter);
-          return q;
-        })(),
-        supabase.rpc("get_cxc_cxp_dashboard" as any, { _empresa: empresaFilter }),
-      ]);
-
-      if (kpiRes.data) {
-        const d = kpiRes.data as any;
-        const ingresos = Number(d.ingresos) || 0;
-        const salidas = Number(d.salidas) || 0;
-        const resultado = ingresos - salidas;
-        setKpis({
-          ingresos, salidas, resultado,
-          margen: ingresos > 0 ? Math.round((resultado / ingresos) * 10000) / 100 : 0,
-          conteoIngresos: Number(d.conteo_ingresos) || 0,
-          conteoSalidas: Number(d.conteo_salidas) || 0,
-        });
-      }
-
-      if (flujoRes.data && Array.isArray(flujoRes.data)) {
-        let balance = 0;
-        const flujoArr = (flujoRes.data as any[]).slice(-12).map((row) => {
-          const ing = Number(row.ingresos) || 0;
-          const sal = Number(row.salidas) || 0;
-          balance += ing - sal;
-          return { periodo: row.periodo, ingresos: ing, salidas: sal, balance };
-        });
-        setFlujo(flujoArr);
-      }
-
-      if (catRes.data && Array.isArray(catRes.data)) {
-        setTopCats((catRes.data as any[]).map((r) => ({ categoria: r.categoria, total: Number(r.total) || 0 })));
-      }
-
-      if (recRes.data) setRecientes(recRes.data as Movimiento[]);
-
-      if (cuentasRes.data) {
-        const c = cuentasRes.data as any;
-        setCuentas({
-          cxc: Number(c.cxc) || 0,
-          cxp: Number(c.cxp) || 0,
-        });
-      }
-
-      setLoading(false);
-    }
-    load();
-  }, [empresaActiva, selectedAnio, selectedMes, periodsLoaded]);
+    setLoading(true);
+    Promise.all([
+      apiFetch<KPIs>(`/api/dashboard/kpis?${params}`),
+      apiFetch<{ flujo: FlujoMes[] }>(`/api/dashboard/flujo?anioDesde=${anioDesde}${empresa ? `&empresa=${empresa}` : ""}`),
+      apiFetch<{ categorias: CatGasto[] }>(`/api/dashboard/categorias?${params}&limite=8`),
+      apiFetch<{ movimientos: Movimiento[] }>(`/api/dashboard/recientes${empresa ? `?empresa=${empresa}` : ""}`),
+      apiFetch<CuentasDashboard>(`/api/dashboard/cuentas${empresa ? `?empresa=${empresa}` : ""}`),
+    ])
+      .then(([kpiData, flujoData, catData, recData, cuentasData]) => {
+        setKpis(kpiData);
+        setFlujo(flujoData.flujo);
+        setTopCats(catData.categorias);
+        setRecientes(recData.movimientos);
+        setCuentas(cuentasData);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [empresaActiva, selectedAnio, selectedMes, periodsLoaded, dataVersion]);
 
   const kpiCards = useMemo(() => {
     if (!kpis) return [];
@@ -224,9 +186,13 @@ export default function DashboardPage() {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <Select value={String(selectedMes)} onValueChange={(v) => setSelectedMes(Number(v))}>
+          <Select
+            value={selectedMes ? String(selectedMes) : ""}
+            onValueChange={(v) => setSelectedMes(Number(v))}
+            disabled={availableMonths.length === 0}
+          >
             <SelectTrigger className="w-[120px] h-8 text-xs">
-              <SelectValue />
+              <SelectValue placeholder="Mes" />
             </SelectTrigger>
             <SelectContent>
               {availableMonths.map((m) => (
@@ -234,9 +200,13 @@ export default function DashboardPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={String(selectedAnio)} onValueChange={(v) => setSelectedAnio(Number(v))}>
+          <Select
+            value={selectedAnio ? String(selectedAnio) : ""}
+            onValueChange={(v) => setSelectedAnio(Number(v))}
+            disabled={availableYears.length === 0}
+          >
             <SelectTrigger className="w-[80px] h-8 text-xs">
-              <SelectValue />
+              <SelectValue placeholder="Año" />
             </SelectTrigger>
             <SelectContent>
               {availableYears.map((y) => (
@@ -267,7 +237,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Cuentas por Cobrar / Pagar */}
+      {/* CXC / CXP */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
         <Card className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
           <div className="flex items-center gap-2 mb-3">
@@ -277,10 +247,9 @@ export default function DashboardPage() {
           <MontoDisplay monto={cuentas?.cxc ?? 0} tipo="INGRESO" size="xl" />
           <p className="text-xs text-muted-foreground mt-2">Basado en ingresos de clientes registrados</p>
         </Card>
-
         <Card className="p-4 border-border rounded-xl bg-card hover:bg-muted/50 transition-colors">
           <div className="flex items-center gap-2 mb-3">
-            <FileWarning className="h-4 w-4 text-[hsl(var(--destructive))]" />
+            <FileWarning className="h-4 w-4 text-destructive" />
             <span className="text-xs text-muted-foreground font-medium">Cuentas por Pagar</span>
           </div>
           <MontoDisplay monto={cuentas?.cxp ?? 0} tipo="SALIDA" size="xl" />
@@ -291,41 +260,53 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-4 border-border rounded-xl bg-card">
           <h3 className="text-sm font-medium text-foreground mb-4">Flujo Mensual</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={flujo}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
-              <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
-              <Tooltip
-                contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
-                formatter={(v: number, name: string) => [formatMonto(v, true), name === "ingresos" ? "Ingresos" : name === "salidas" ? "Egresos" : "Balance"]}
-              />
-              <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
-              <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="salidas" name="Egresos" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
-              <Area type="monotone" dataKey="balance" name="Balance" stroke="#4ADE80" fill="none" strokeWidth={2} strokeDasharray="4 2" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {flujo.length === 0 ? (
+            <div className="h-60 flex items-center justify-center text-sm text-muted-foreground">
+              Sin movimientos registrados — importa tu primer Excel
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={flujo}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+                <YAxis tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+                <Tooltip
+                  contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
+                  formatter={(v: number, name: string) => [formatMonto(v, true), name === "ingresos" ? "Ingresos" : name === "salidas" ? "Egresos" : "Balance"]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, color: "#CCCCCC" }} />
+                <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} strokeWidth={2} />
+                <Area type="monotone" dataKey="salidas" name="Egresos" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
+                <Area type="monotone" dataKey="balance" name="Balance" stroke="#4ADE80" fill="none" strokeWidth={2} strokeDasharray="4 2" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </Card>
 
         <Card className="p-4 border-border rounded-xl bg-card">
           <h3 className="text-sm font-medium text-foreground mb-4">Top Egresos por Categoría</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={topCats} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
-              <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
-              <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
-              <Tooltip
-                contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
-                formatter={(v: number) => [formatMonto(v, true), "Total"]}
-              />
-              <Bar dataKey="total" name="Total" fill="#EF4444" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {topCats.length === 0 ? (
+            <div className="h-60 flex items-center justify-center text-sm text-muted-foreground">
+              Sin egresos categorizados en este período
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={topCats} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" />
+                <XAxis type="number" tickFormatter={formatMontoAbreviado} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+                <YAxis dataKey="categoria" type="category" width={100} tick={{ fontSize: 10, fill: "#CCCCCC" }} />
+                <Tooltip
+                  contentStyle={{ background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 8, fontSize: 12, color: "#FFFFFF" }}
+                  formatter={(v: number) => [formatMonto(v, true), "Total"]}
+                />
+                <Bar dataKey="total" name="Total" fill="#EF4444" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </Card>
       </div>
 
-      {/* Recent Movements */}
+      {/* Últimos Movimientos */}
       <Card className="border-border rounded-xl overflow-hidden bg-card">
         <div className="p-4 border-b border-border">
           <h3 className="text-sm font-medium text-foreground flex items-center gap-2">

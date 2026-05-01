@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { Settings, Users, Bot, Sparkles, Plus, Trash2, Save, Eye, EyeOff, Pencil, Shield, ShieldCheck, RefreshCw, Loader2, LayoutGrid, AlertTriangle, DatabaseZap } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Card } from "@/components/ui/card";
@@ -61,11 +60,11 @@ function WipeDbButton() {
   const handleWipe = async () => {
     setWiping(true);
     try {
-      const { error } = await supabase.rpc("wipe_financial_data");
-      if (error) throw error;
+      const res = await fetch("/api/admin/wipe", { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error("Error al limpiar");
       toast.success("Base de datos limpiada correctamente");
-    } catch (e: any) {
-      toast.error("Error al limpiar: " + (e.message || "desconocido"));
+    } catch (e: unknown) {
+      toast.error("Error al limpiar: " + (e instanceof Error ? e.message : "desconocido"));
     } finally {
       setWiping(false);
     }
@@ -180,52 +179,58 @@ function UsersTab() {
 
   async function fetchUsers() {
     setLoading(true);
-    const { data: profiles } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
-    const { data: roles } = await supabase.from("user_roles").select("*");
-
-    const rolesMap = new Map<string, string>();
-    roles?.forEach((r) => rolesMap.set(r.user_id, r.role));
-
-    let mapped = (profiles ?? []).map((p) => ({
-      ...p,
-      rol: rolesMap.get(p.user_id) ?? "VIEWER",
-    }));
-
-    // Non-DEV admins must not see SUPER_ADMIN_DEV users
-    if (currentUser?.rol !== "SUPER_ADMIN_DEV") {
-      mapped = mapped.filter((u) => u.rol !== "SUPER_ADMIN_DEV");
+    try {
+      const res = await fetch("/api/admin/users", { credentials: "include" });
+      const { users: data } = await res.json() as { users: UserRow[] };
+      setUsers(data ?? []);
+    } catch {
+      setUsers([]);
     }
-
-    setUsers(mapped);
     setLoading(false);
   }
 
   useEffect(() => { fetchUsers(); }, []);
 
   async function handleToggleActive(u: UserRow) {
-    const { error } = await supabase.from("profiles").update({ activo: !u.activo } as any).eq("user_id", u.user_id);
-    if (error) return toast.error("Error: " + error.message);
+    const res = await fetch(`/api/admin/users/${u.user_id}/activo`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: !u.activo }),
+    });
+    if (!res.ok) return toast.error("Error al actualizar");
     toast.success(u.activo ? "Usuario desactivado" : "Usuario activado");
     fetchUsers();
   }
 
   async function handleUpdateRole(userId: string, newRole: string) {
-    const { error } = await supabase.from("user_roles").update({ role: newRole } as any).eq("user_id", userId);
-    if (error) return toast.error("Error: " + error.message);
+    const res = await fetch(`/api/admin/users/${userId}/role`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: newRole }),
+    });
+    if (!res.ok) return toast.error("Error al actualizar rol");
     toast.success("Rol actualizado");
     fetchUsers();
   }
 
-  async function handleUpdateEmpresas(userId: string, empresas: string[]) {
-    const { error } = await supabase.from("profiles").update({ empresas } as any).eq("user_id", userId);
-    if (error) return toast.error("Error: " + error.message);
+  async function handleUpdateEmpresas(userId: string, empresasArr: string[]) {
+    const res = await fetch(`/api/admin/users/${userId}/empresas`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ empresas: empresasArr }),
+    });
+    if (!res.ok) return toast.error("Error al actualizar empresas");
     toast.success("Empresas actualizadas");
     fetchUsers();
   }
 
   async function handleUpdateModulosOverride(userId: string, overrides: Record<string, boolean> | null) {
-    const { error } = await supabase.from("profiles").update({ modulos_override: overrides } as any).eq("user_id", userId);
-    if (error) return toast.error("Error: " + error.message);
+    const res = await fetch(`/api/admin/users/${userId}/modulos`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modulos_override: overrides }),
+    });
+    if (!res.ok) return toast.error("Error al actualizar módulos");
     toast.success("Acceso a módulos actualizado");
     fetchUsers();
   }
@@ -527,16 +532,13 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-admin`, {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ email, password, nombre, rol, empresas }),
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, nombre, role: rol, empresaIds: [] }),
       });
-      const data = await res.json();
+      const data = await res.json() as { ok?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error || "Error al crear usuario");
 
       toast.success("Usuario creado exitosamente");
@@ -614,13 +616,16 @@ function ModulesTab() {
 
   async function fetchRoleAccess() {
     setLoading(true);
-    const { data } = await supabase.from("role_module_access").select("*");
-    const map: Record<string, Record<string, boolean>> = {};
-    data?.forEach((r: any) => {
-      if (!map[r.role]) map[r.role] = {};
-      map[r.role][r.module] = r.allowed;
-    });
-    setRoleAccess(map);
+    try {
+      const res = await fetch("/api/admin/modules", { credentials: "include" });
+      const { modules } = await res.json() as { modules: Array<{ role: string; module: string; allowed: boolean }> };
+      const map: Record<string, Record<string, boolean>> = {};
+      modules?.forEach((r) => {
+        if (!map[r.role]) map[r.role] = {};
+        map[r.role][r.module] = r.allowed;
+      });
+      setRoleAccess(map);
+    } catch { setRoleAccess({}); }
     setLoading(false);
   }
 
@@ -636,15 +641,15 @@ function ModulesTab() {
   async function handleSave() {
     setSaving(true);
     try {
-      for (const role of visibleRoles) {
-        for (const mod of ALL_MODULES) {
-          const allowed = roleAccess[role]?.[mod.key] ?? false;
-          await supabase.from("role_module_access").upsert(
-            { role, module: mod.key, allowed } as any,
-            { onConflict: "role,module" }
-          );
-        }
-      }
+      const entries = visibleRoles.flatMap((role) =>
+        ALL_MODULES.map((mod) => ({ role, module: mod.key, allowed: roleAccess[role]?.[mod.key] ?? false }))
+      );
+      const res = await fetch("/api/admin/modules", {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries }),
+      });
+      if (!res.ok) throw new Error("Error");
       toast.success("Acceso a módulos actualizado");
     } catch {
       toast.error("Error al guardar");
@@ -716,8 +721,11 @@ function LLMTab() {
 
   const fetchProviders = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from("llm_providers").select("*").order("created_at");
-    setProviders((data as unknown as LLMProvider[]) ?? []);
+    try {
+      const res = await fetch("/api/admin/llm", { credentials: "include" });
+      const { providers: data } = await res.json() as { providers: LLMProvider[] };
+      setProviders(data ?? []);
+    } catch { setProviders([]); }
     setLoading(false);
   }, []);
 
@@ -725,17 +733,18 @@ function LLMTab() {
 
   async function saveProvider(provider: LLMProvider) {
     setSaving((prev) => ({ ...prev, [provider.id]: true }));
-    const { error } = await supabase.from("llm_providers").upsert({
-      id: provider.id,
-      name: provider.name,
-      base_url: provider.base_url,
-      api_key_encrypted: provider.api_key_encrypted,
-      models: provider.models,
-      is_default: provider.is_default,
-    } as any);
+    const res = await fetch(`/api/admin/llm/${provider.id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: provider.name, baseUrl: provider.base_url,
+        apiKeyEncrypted: provider.api_key_encrypted,
+        models: provider.models, isDefault: provider.is_default,
+      }),
+    });
     setSaving((prev) => ({ ...prev, [provider.id]: false }));
-    if (error) {
-      toast.error("Error al guardar: " + error.message);
+    if (!res.ok) {
+      toast.error("Error al guardar");
     } else {
       toast.success(`${provider.name} guardado`);
       fetchProviders();
@@ -747,41 +756,31 @@ function LLMTab() {
   }
 
   async function setDefault(id: string) {
-    // Unset all, then set this one
     const updated = providers.map((p) => ({ ...p, is_default: p.id === id }));
     setProviders(updated);
-    for (const p of updated) {
-      await supabase.from("llm_providers").update({ is_default: p.is_default } as any).eq("id", p.id);
-    }
+    await Promise.all(updated.map((p) =>
+      fetch(`/api/admin/llm/${p.id}`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDefault: p.is_default }),
+      })
+    ));
     toast.success("Proveedor por defecto actualizado");
     fetchProviders();
   }
 
   async function addProvider() {
-    const newProv: any = {
-      name: "Nuevo Proveedor",
-      base_url: "",
-      api_key_encrypted: "",
-      models: [],
-      is_default: false,
-    };
-    const { data, error } = await supabase.from("llm_providers").insert(newProv).select().single();
-    if (error) {
-      toast.error("Error: " + error.message);
-    } else {
-      toast.success("Proveedor creado");
-      fetchProviders();
-    }
+    const res = await fetch("/api/admin/llm", { method: "POST", credentials: "include" });
+    if (!res.ok) return toast.error("Error al crear proveedor");
+    toast.success("Proveedor creado");
+    fetchProviders();
   }
 
   async function deleteProvider(id: string) {
-    const { error } = await supabase.from("llm_providers").delete().eq("id", id);
-    if (error) {
-      toast.error("Error: " + error.message);
-    } else {
-      toast.success("Proveedor eliminado");
-      fetchProviders();
-    }
+    const res = await fetch(`/api/admin/llm/${id}`, { method: "DELETE", credentials: "include" });
+    if (!res.ok) return toast.error("Error al eliminar");
+    toast.success("Proveedor eliminado");
+    fetchProviders();
   }
 
   function addModel(providerId: string) {
@@ -908,20 +907,22 @@ function LLMTab() {
                     onClick={async () => {
                       setFetchingModels((prev) => ({ ...prev, [prov.id]: true }));
                       try {
-                        const { data, error } = await supabase.functions.invoke("list-models", {
-                          body: { base_url: prov.base_url, api_key: prov.api_key_encrypted },
+                        const res = await fetch("/api/admin/llm/list-models", {
+                          method: "POST", credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ base_url: prov.base_url, api_key: prov.api_key_encrypted }),
                         });
-                        if (error) throw error;
-                        if (data?.error) {
+                        const data = await res.json() as { models?: string[]; error?: string };
+                        if (data.error) {
                           toast.error(data.error);
-                        } else if (data?.models?.length) {
-                          setAvailableModels((prev) => ({ ...prev, [prov.id]: data.models }));
+                        } else if (data.models?.length) {
+                          setAvailableModels((prev) => ({ ...prev, [prov.id]: data.models! }));
                           toast.success(`${data.models.length} modelos encontrados`);
                         } else {
                           toast.info("No se encontraron modelos");
                         }
-                      } catch (err: any) {
-                        toast.error("Error al consultar modelos: " + (err.message || "desconocido"));
+                      } catch (err: unknown) {
+                        toast.error("Error al consultar modelos: " + (err instanceof Error ? err.message : "desconocido"));
                       } finally {
                         setFetchingModels((prev) => ({ ...prev, [prov.id]: false }));
                       }
@@ -1007,12 +1008,16 @@ function SkillsTab() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [{ data: skillsData }, { data: provsData }] = await Promise.all([
-      supabase.from("agent_skills").select("*").order("created_at"),
-      supabase.from("llm_providers").select("*").order("created_at"),
-    ]);
-    setSkills((skillsData as unknown as AgentSkill[]) ?? []);
-    setProviders((provsData as unknown as LLMProvider[]) ?? []);
+    try {
+      const [skillsRes, provsRes] = await Promise.all([
+        fetch("/api/admin/skills", { credentials: "include" }),
+        fetch("/api/admin/llm", { credentials: "include" }),
+      ]);
+      const { skills: skillsData } = await skillsRes.json() as { skills: AgentSkill[] };
+      const { providers: provsData } = await provsRes.json() as { providers: LLMProvider[] };
+      setSkills(skillsData ?? []);
+      setProviders(provsData ?? []);
+    } catch { setSkills([]); setProviders([]); }
     setLoading(false);
   }, []);
 
@@ -1021,11 +1026,13 @@ function SkillsTab() {
   async function toggleSkill(id: string) {
     const skill = skills.find((s) => s.id === id);
     if (!skill) return;
-    // Optimistic update
     setSkills((prev) => prev.map((s) => s.id === id ? { ...s, enabled: !s.enabled } : s));
-    const { error } = await supabase.from("agent_skills").update({ enabled: !skill.enabled } as any).eq("id", id);
-    if (error) {
-      // Revert on error
+    const res = await fetch(`/api/admin/skills/${id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: !skill.enabled }),
+    });
+    if (!res.ok) {
       setSkills((prev) => prev.map((s) => s.id === id ? { ...s, enabled: skill.enabled } : s));
       toast.error("Error al actualizar skill");
     }
@@ -1035,8 +1042,8 @@ function SkillsTab() {
     const prev = [...skills];
     setSkills((s) => s.filter((sk) => sk.id !== id));
     if (editingId === id) setEditingId(null);
-    const { error } = await supabase.from("agent_skills").delete().eq("id", id);
-    if (error) {
+    const res = await fetch(`/api/admin/skills/${id}`, { method: "DELETE", credentials: "include" });
+    if (!res.ok) {
       setSkills(prev);
       toast.error("Error al eliminar");
     } else {
@@ -1047,8 +1054,12 @@ function SkillsTab() {
   async function saveSkill(id: string, patch: Partial<AgentSkill>) {
     setSkills((prev) => prev.map((s) => s.id === id ? { ...s, ...patch } : s));
     setEditingId(null);
-    const { error } = await supabase.from("agent_skills").update(patch as any).eq("id", id);
-    if (error) {
+    const res = await fetch(`/api/admin/skills/${id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
       toast.error("Error al guardar");
       fetchData();
     } else {
@@ -1057,11 +1068,16 @@ function SkillsTab() {
   }
 
   async function createSkill(skill: Omit<AgentSkill, "id">) {
-    const { data, error } = await supabase.from("agent_skills").insert(skill as any).select().single();
-    if (error) {
-      toast.error("Error: " + error.message);
+    const res = await fetch("/api/admin/skills", {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(skill),
+    });
+    if (!res.ok) {
+      toast.error("Error al crear skill");
     } else {
-      setSkills((prev) => [...prev, data as unknown as AgentSkill]);
+      const { skill: created } = await res.json() as { skill: AgentSkill };
+      setSkills((prev) => [...prev, created]);
       toast.success("Skill creado");
       setShowCreate(false);
     }

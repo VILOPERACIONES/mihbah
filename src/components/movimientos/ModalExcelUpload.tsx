@@ -1,12 +1,11 @@
 import { useState, useRef, useCallback, useMemo } from "react";
+import { useAppStore } from "@/store/app.store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { TipoChip } from "@/components/shared/TipoChip";
 import { MontoDisplay } from "@/components/shared/MontoDisplay";
-import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, Building2, Calendar, Hash, ArrowUpDown, X } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -173,6 +172,7 @@ interface Props {
 }
 
 export function ModalExcelUpload({ open, onClose, onDone }: Props) {
+  const { bumpDataVersion } = useAppStore();
   const [step, setStep] = useState<Step>("select");
   const [fileName, setFileName] = useState("");
   const [filas, setFilas] = useState<FilaParsed[]>([]);
@@ -233,87 +233,30 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
 
   const handleImport = async () => {
     setStep("importing");
-    setProgress(0);
+    setProgress(50);
 
-    let imported = 0;
-    const batchErrors: ParseError[] = [];
+    try {
+      const res = await fetch("/api/movimientos/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombreArchivo: fileName, totalRaw, filas, errores }),
+      });
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setErrores([{ fila: 0, error: "Tu sesión expiró. Inicia sesión de nuevo para importar." }]);
-      setImportResult({ ok: 0, fail: filas.length });
-      setStep("done");
-      return;
-    }
-
-    // Crear registro de upload primero para obtener el upload_id
-    const { data: uploadRecord, error: uploadError } = await supabase.from("excel_uploads").insert([
-      {
-        nombre_archivo: fileName,
-        total_filas: totalRaw,
-        filas_importadas: 0,
-        filas_error: 0,
-        errores_detalle: null,
-        subido_por_id: user.id,
-      },
-    ]).select("id").single();
-
-    if (uploadError || !uploadRecord) {
-      setErrores([{ fila: 0, error: "No se pudo registrar la carga: " + (uploadError?.message ?? "Error desconocido") }]);
-      setImportResult({ ok: 0, fail: filas.length });
-      setStep("done");
-      return;
-    }
-
-    const uploadId = uploadRecord.id;
-
-    for (let i = 0; i < filas.length; i += BATCH_SIZE) {
-      const batch = filas.slice(i, i + BATCH_SIZE).map((f) => ({
-        empresa: f.empresa,
-        anio: f.anio,
-        mes: f.mes,
-        fecha: f.fecha,
-        tipo: f.tipo,
-        categoria: f.categoria,
-        grupo: f.grupo,
-        nombre: f.nombre,
-        concepto: f.concepto,
-        monto: f.monto,
-        cuenta: f.cuenta,
-        proyecto: f.proyecto,
-        comentario: f.comentario,
-        fuente: "EXCEL",
-        upload_id: uploadId,
-      }));
-
-      const { error } = await supabase.from("movimientos").insert(batch);
-
-      if (error) {
-        batchErrors.push({ fila: i + 4, error: error.message });
-      } else {
-        imported += batch.length;
+      if (!res.ok) {
+        const body = await res.json() as { error?: string };
+        throw new Error(body.error ?? `Error ${res.status}`);
       }
 
-      setProgress(Math.round((Math.min(i + batch.length, filas.length) / Math.max(filas.length, 1)) * 100));
+      const { imported, failed } = await res.json() as { imported: number; failed: number };
+      setImportResult({ ok: imported, fail: failed });
+      if (imported > 0) bumpDataVersion();
+    } catch (e) {
+      setImportResult({ ok: 0, fail: filas.length });
+      setErrores([{ fila: 0, error: e instanceof Error ? e.message : "Error desconocido al importar" }]);
     }
 
-    const uploadErrors: Json | null =
-      errores.length + batchErrors.length > 0
-        ? ([...errores, ...batchErrors].map((item) => ({ fila: item.fila, error: item.error })) as unknown as Json)
-        : null;
-
-    // Actualizar el registro de upload con los resultados
-    await supabase.from("excel_uploads").update({
-      filas_importadas: imported,
-      filas_error: errores.length + batchErrors.length,
-      errores_detalle: uploadErrors,
-    }).eq("id", uploadId);
-
-    setImportResult({ ok: imported, fail: filas.length - imported });
-    setErrores((prev) => [...prev, ...batchErrors]);
+    setProgress(100);
     setStep("done");
   };
 
@@ -338,7 +281,7 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
       <DialogContent
         className={`bg-[hsl(var(--bg-card))] border-border transition-all ${
           isPreviewStep
-            ? "sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+            ? "w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col"
             : "sm:max-w-lg"
         }`}
       >
@@ -456,8 +399,8 @@ export function ModalExcelUpload({ open, onClose, onDone }: Props) {
             </div>
 
             {/* Data table */}
-            <div className="border border-border rounded-lg overflow-hidden flex-1 min-h-0">
-              <div className="overflow-auto max-h-[40vh]">
+            <div className="border border-border rounded-lg overflow-hidden flex-1 min-h-0 flex flex-col">
+              <div className="overflow-auto flex-1">
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 z-10">
                     <tr style={{ background: "hsl(var(--bg-surface))" }}>

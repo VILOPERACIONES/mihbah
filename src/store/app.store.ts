@@ -4,6 +4,8 @@ import { persist } from "zustand/middleware";
 export type EmpresaFiltro = string;
 
 interface AppStore {
+  dataVersion: number;
+  bumpDataVersion: () => void;
   empresaActiva: EmpresaFiltro;
   setEmpresaActiva: (e: EmpresaFiltro) => void;
   sidebarOpen: boolean;
@@ -31,6 +33,8 @@ const getInitialChatOpen = () => {
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
+      dataVersion: 0,
+      bumpDataVersion: () => set((s) => ({ dataVersion: s.dataVersion + 1 })),
       empresaActiva: "TODAS",
       setEmpresaActiva: (e) => set({ empresaActiva: e }),
       sidebarOpen: false,

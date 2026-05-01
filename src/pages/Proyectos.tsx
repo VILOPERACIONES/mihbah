@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/store/app.store";
-import { supabase } from "@/integrations/supabase/client";
 import { MontoDisplay } from "@/components/shared/MontoDisplay";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,22 +23,14 @@ export default function ProyectosPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const empresaFilter = empresaActiva === "TODAS" ? undefined : empresaActiva;
-      const { data } = await supabase.rpc("get_proyectos_resumen", {
-        ...(empresaFilter ? { _empresa: empresaFilter } : {}),
-      });
-
-      if (data) {
-        setProyectos(
-          (data as any[]).map((r) => ({
-            proyecto: r.proyecto,
-            empresa: r.empresa,
-            registros: Number(r.registros),
-            flujo: Number(r.flujo),
-            fechaMin: r.fecha_min,
-            fechaMax: r.fecha_max,
-          }))
-        );
+      try {
+        const params = new URLSearchParams();
+        if (empresaActiva !== "TODAS") params.set("empresa", empresaActiva);
+        const res = await fetch(`/api/dashboard/proyectos?${params}`, { credentials: "include" });
+        const { proyectos: data } = await res.json() as { proyectos: ProyectoData[] };
+        setProyectos(data ?? []);
+      } catch {
+        setProyectos([]);
       }
       setLoading(false);
     }
@@ -51,9 +42,7 @@ export default function ProyectosPage() {
       <div className="space-y-6">
         <h1 className="text-xl font-semibold">Proyectos</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 rounded-xl" />
-          ))}
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
         </div>
       </div>
     );
@@ -67,7 +56,7 @@ export default function ProyectosPage() {
           title="Sin proyectos"
           description={
             empresaActiva !== "TODAS"
-              ? `${empresaActiva} no tiene proyectos asignados en el archivo.`
+              ? `${empresaActiva} no tiene movimientos con proyecto asignado.`
               : "No hay movimientos con proyecto asignado."
           }
         />
@@ -104,9 +93,11 @@ export default function ProyectosPage() {
                 <span className="font-money">{p.registros.toLocaleString()}</span>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {p.fechaMin} → {p.fechaMax}
-            </p>
+            {p.fechaMin && p.fechaMax && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {p.fechaMin} → {p.fechaMax}
+              </p>
+            )}
           </Card>
         ))}
       </div>
